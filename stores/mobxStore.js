@@ -157,6 +157,32 @@ class AuthStore {
       throw new Error("Failed to update password");
     }
   }
+
+  async forceRefresh() {
+    console.log("🔄 Force refreshing user data...");
+    try {
+      const token = localStorage.getItem("authToken");
+      if (token && token !== "undefined" && token !== "null") {
+        const response = await fetch("/api/auth/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          console.log("✅ Fresh user data:", userData);
+          this.user = userData;
+          this.isAuthenticated = true;
+          return userData;
+        }
+      }
+    } catch (error) {
+      console.error("❌ Error force refreshing user:", error);
+    }
+    return null;
+  }
 }
 
 class VideoStore {
@@ -201,19 +227,31 @@ class SubscriptionStore {
     makeAutoObservable(this);
   }
 
-  async createCheckoutSession(userData) {
-    const params = new URLSearchParams({
-      products: process.env.NEXT_PUBLIC_POLAR_PRODUCT_ID,
-      customerEmail: userData.email,
-      customerName: userData.fullName,
-      metadata: JSON.stringify({
-        fullName: userData.fullName,
-        marketingConsent: userData.marketingConsent.toString(),
-      }),
-    });
+  async createCheckoutSession(customerData) {
+    try {
+      const response = await fetch("/api/subscription/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(customerData),
+      });
 
-    const checkoutUrl = `/api/subscription/create?${params.toString()}`;
-    return checkoutUrl;
+      if (!response.ok) {
+        throw new Error("Failed to create checkout session");
+      }
+
+      const data = await response.json();
+
+      // Update the success URL to redirect to our thank you page
+      const checkoutUrl = data.url.replace(
+        "success_url=http%3A//localhost%3A3000/dashboard/videos",
+        `success_url=${encodeURIComponent(window.location.origin)}/thank-you`
+      );
+
+      return checkoutUrl;
+    } catch (error) {
+      console.error("Error creating checkout session:", error);
+      throw error;
+    }
   }
 
   async getCustomerPortalUrl() {
