@@ -1,50 +1,55 @@
-"use client"
+"use client";
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { observer } from "mobx-react-lite"
-import { useStore } from "@/stores/StoreProvider"
-import { Sidebar } from "@/components/layout/Sidebar"
-import { Header } from "@/components/layout/DashboardHeader"
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { observer } from "mobx-react-lite";
+import { useStore } from "@/stores/StoreProvider";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { Header } from "@/components/layout/DashboardHeader";
 
 const DashboardLayout = observer(({ children }) => {
-  const router = useRouter()
-  const { authStore, videoStore } = useStore()
+  const router = useRouter();
+  const { authStore, videoStore } = useStore();
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const initDashboard = async () => {
-      try {
-        // Check if user is authenticated
-        if (!authStore.isInitialized) {
-          await authStore.initialize()
-        }
-
-        // If not authenticated, redirect to login
-        if (!authStore.isAuthenticated) {
-          router.push("/login")
-          return
-        }
-
-        // Load videos if not already loaded
-        if (!videoStore.isInitialized) {
-          await videoStore.fetchVideos()
-        }
-      } catch (error) {
-        console.error("Dashboard initialization error:", error)
-        router.push("/login")
+    const checkAuth = async () => {
+      // Check if user is already authenticated
+      if (authStore.isAuthenticated && authStore.user) {
+        setIsLoading(false);
+        return;
       }
-    }
 
-    initDashboard()
-  }, [authStore, videoStore, router])
+      // Try to initialize from token (this will call /api/auth/me)
 
-  // Show loading state while initializing
-  if (!authStore.isInitialized || !authStore.isAuthenticated) {
+      await authStore.initialize();
+
+      if (!authStore.isAuthenticated) {
+        router.push("/login");
+        return;
+      }
+
+      // Load videos if authenticated
+      if (!videoStore.isInitialized) {
+        await videoStore.fetchVideos();
+      }
+
+      setIsLoading(false);
+    };
+
+    checkAuth();
+  }, [authStore, videoStore, router]);
+
+  if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
-    )
+    );
+  }
+
+  if (!authStore.isAuthenticated) {
+    return null; // Will redirect
   }
 
   return (
@@ -55,7 +60,7 @@ const DashboardLayout = observer(({ children }) => {
         <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
       </div>
     </div>
-  )
-})
+  );
+});
 
-export default DashboardLayout
+export default DashboardLayout;

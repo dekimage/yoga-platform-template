@@ -1,25 +1,31 @@
-"use client"
+"use client";
 
-import { createContext, useContext, useEffect, useState } from "react"
+import * as React from "react";
+import { ThemeProvider as NextThemesProvider } from "next-themes";
 
-const ThemeContext = createContext({})
+export function ThemeProvider({ children, ...props }) {
+  const [mounted, setMounted] = React.useState(false);
 
-export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState("light")
+  // useEffect only runs on the client, so now we can safely show the UI
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  useEffect(() => {
-    const root = window.document.documentElement
-    root.classList.remove("light", "dark")
-    root.classList.add(theme)
-  }, [theme])
-
-  return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>
-}
-
-export const useTheme = () => {
-  const context = useContext(ThemeContext)
-  if (context === undefined) {
-    throw new Error("useTheme must be used within a ThemeProvider")
+  if (!mounted) {
+    // Return a div with the same structure but without theme attributes
+    // This prevents hydration mismatch
+    return <div suppressHydrationWarning>{children}</div>;
   }
-  return context
+
+  return (
+    <NextThemesProvider
+      attribute="data-theme"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+      {...props}
+    >
+      {children}
+    </NextThemesProvider>
+  );
 }

@@ -4,16 +4,13 @@ import { verifyToken } from "@/lib/auth";
 
 export async function GET(request) {
   try {
-    // Extract token directly from Authorization header
     const authHeader = request.headers.get("authorization");
-    console.log("Auth Header:", authHeader);
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json({ error: "No token provided" }, { status: 401 });
     }
 
-    const token = authHeader.substring(7); // Remove "Bearer " prefix
-    console.log("Extracted Token:", token);
+    const token = authHeader.substring(7);
 
     if (!token) {
       return NextResponse.json({ error: "No token provided" }, { status: 401 });
@@ -32,10 +29,11 @@ export async function GET(request) {
     const userData = userDoc.data();
     return NextResponse.json({
       id: decodedToken.uid,
+      activeMember: userData.activeMember,
       ...userData,
     });
   } catch (error) {
-    console.error("Error getting user:", error);
+    console.error("Error verifying user:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

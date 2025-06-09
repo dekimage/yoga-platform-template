@@ -1,70 +1,5 @@
 import { makeAutoObservable } from "mobx";
 
-// Dummy data flag - set to false to use real APIs
-const isDummy = true;
-
-// Dummy data
-const dummyVideos = [
-  {
-    id: "1",
-    title: "Morning Flow for Beginners",
-    slug: "morning-flow-beginners",
-    description:
-      "A gentle 20-minute flow to start your day with energy and mindfulness.",
-    bunnyVideoId: "video1",
-    thumbnail: "/placeholder.svg?height=200&width=300",
-    category: "Vinyasa",
-    tags: ["morning", "beginner", "flow"],
-    level: "beginner",
-    duration: 20,
-  },
-  {
-    id: "2",
-    title: "Power Yoga for Strength",
-    slug: "power-yoga-strength",
-    description:
-      "Build strength and endurance with this challenging 45-minute power yoga session.",
-    bunnyVideoId: "video2",
-    thumbnail: "/placeholder.svg?height=200&width=300",
-    category: "Power",
-    tags: ["strength", "advanced", "power"],
-    level: "advanced",
-    duration: 45,
-  },
-  {
-    id: "3",
-    title: "Restorative Evening Practice",
-    slug: "restorative-evening-practice",
-    description:
-      "Wind down with this peaceful 30-minute restorative practice perfect for bedtime.",
-    bunnyVideoId: "video3",
-    thumbnail: "/placeholder.svg?height=200&width=300",
-    category: "Restorative",
-    tags: ["evening", "relaxation", "restorative"],
-    level: "beginner",
-    duration: 30,
-  },
-];
-
-const dummyUser = {
-  id: "user1",
-  email: "demo@example.com",
-  fullName: "Demo User",
-  activeMember: true,
-  createdAt: new Date().toISOString(),
-  analytics: {
-    minutesWatched: 120,
-    monthsPaid: 2,
-    lastSession: new Date().toISOString(),
-    completedVideos: ["1"],
-  },
-  preferences: {
-    notifications: true,
-  },
-  marketingConsent: false,
-  isAdmin: true,
-};
-
 class AuthStore {
   user = null;
   isAuthenticated = false;
@@ -76,15 +11,26 @@ class AuthStore {
 
   async initialize() {
     try {
-      if (isDummy) {
-        this.user = dummyUser;
-        this.isAuthenticated = true;
-      } else {
-        const response = await fetch("/api/auth/me");
+      const token = localStorage.getItem("authToken");
+      // console.log("Token from localStorage:", token);
+
+      if (token && token !== "undefined" && token !== "null") {
+        const response = await fetch("/api/auth/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
         if (response.ok) {
           this.user = await response.json();
           this.isAuthenticated = true;
+        } else {
+          console.error("Failed to authenticate:", response.statusText);
+          this.isAuthenticated = false;
+          localStorage.removeItem("authToken");
         }
+      } else {
+        console.log("No valid token found in localStorage");
       }
     } catch (error) {
       console.error("Auth initialization error:", error);
@@ -94,19 +40,6 @@ class AuthStore {
   }
 
   async signup(email, password, fullName, marketingConsent = false) {
-    if (isDummy) {
-      // For dummy mode, just create a fake user
-      this.user = {
-        ...dummyUser,
-        email,
-        fullName,
-        marketingConsent,
-        activeMember: false,
-      };
-      this.isAuthenticated = true;
-      return;
-    }
-
     const response = await fetch("/api/auth/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -121,15 +54,12 @@ class AuthStore {
     const data = await response.json();
     this.user = data.user;
     this.isAuthenticated = true;
+    this.isInitialized = true;
+    localStorage.setItem("authToken", data.token);
   }
 
   async login(email, password) {
-    if (isDummy) {
-      this.user = dummyUser;
-      this.isAuthenticated = true;
-      return;
-    }
-
+    console.log("Login called with email:", email, "and password:", password);
     const response = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -140,27 +70,57 @@ class AuthStore {
       throw new Error("Login failed");
     }
 
-    this.user = await response.json();
+    const data = await response.json();
+    console.log("Login response data:", data);
+
+    this.user = data.user;
     this.isAuthenticated = true;
+    this.isInitialized = true;
+    console.log("User set in store:", this.user);
+    console.log("isAuthenticated set to:", this.isAuthenticated);
+    console.log("isInitialized set to:", this.isInitialized);
+
+    if (data.token) {
+      localStorage.setItem("authToken", data.token);
+      console.log("Token stored:", data.token);
+
+      // Also set a cookie for middleware
+      document.cookie = `auth-token=${data.token}; path=/; max-age=${
+        60 * 60 * 24 * 7
+      }; SameSite=Lax`;
+    } else if (data.accessToken) {
+      localStorage.setItem("authToken", data.accessToken);
+      console.log("Access token stored:", data.accessToken);
+
+      // Also set a cookie for middleware
+      document.cookie = `auth-token=${data.accessToken}; path=/; max-age=${
+        60 * 60 * 24 * 7
+      }; SameSite=Lax`;
+    } else {
+      console.error("No token found in login response:", data);
+    }
   }
 
   async logout() {
-    if (isDummy) {
-      this.user = null;
-      this.isAuthenticated = false;
-      return;
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (error) {
+      console.error("Logout error:", error);
     }
 
-    await fetch("/api/auth/logout", { method: "POST" });
     this.user = null;
     this.isAuthenticated = false;
+    this.isInitialized = false;
+    localStorage.removeItem("authToken");
+
+    // Also remove the cookie
+    document.cookie =
+      "auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+
+    window.location.href = "/login";
   }
 
   async resetPassword(email) {
-    if (isDummy) {
-      return;
-    }
-
     const response = await fetch("/api/auth/reset-password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -173,11 +133,6 @@ class AuthStore {
   }
 
   async updateProfile(data) {
-    if (isDummy) {
-      this.user = { ...this.user, ...data };
-      return;
-    }
-
     const response = await fetch("/api/user/preferences", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -192,10 +147,6 @@ class AuthStore {
   }
 
   async updatePassword(password) {
-    if (isDummy) {
-      return;
-    }
-
     const response = await fetch("/api/auth/update-password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -220,13 +171,9 @@ class VideoStore {
   async fetchVideos() {
     this.loading = true;
     try {
-      if (isDummy) {
-        this.videos = dummyVideos;
-      } else {
-        const response = await fetch("/api/videos");
-        if (response.ok) {
-          this.videos = await response.json();
-        }
+      const response = await fetch("/api/videos");
+      if (response.ok) {
+        this.videos = await response.json();
       }
     } catch (error) {
       console.error("Error fetching videos:", error);
@@ -237,10 +184,6 @@ class VideoStore {
   }
 
   async getSignedVideoUrl(videoId) {
-    if (isDummy) {
-      return "/placeholder.mp4";
-    }
-
     const response = await fetch(`/api/videos/secure?videoId=${videoId}`);
     if (!response.ok) {
       throw new Error("Failed to get video URL");
@@ -259,11 +202,6 @@ class SubscriptionStore {
   }
 
   async createCheckoutSession(userData) {
-    if (isDummy) {
-      return "https://checkout.polar.sh/demo";
-    }
-
-    // Build query parameters for the new Polar.sh Next.js package
     const params = new URLSearchParams({
       products: process.env.NEXT_PUBLIC_POLAR_PRODUCT_ID,
       customerEmail: userData.email,
@@ -274,18 +212,11 @@ class SubscriptionStore {
       }),
     });
 
-    // The new Polar.sh package uses GET with query parameters
     const checkoutUrl = `/api/subscription/create?${params.toString()}`;
-
-    // Return the URL directly since the Polar package handles the redirect
     return checkoutUrl;
   }
 
   async getCustomerPortalUrl() {
-    if (isDummy) {
-      return "https://portal.polar.sh/demo";
-    }
-
     const response = await fetch("/api/subscription/portal");
     if (!response.ok) {
       throw new Error("Failed to get portal URL");
@@ -302,10 +233,6 @@ class AnalyticsStore {
   }
 
   async trackVideoView(videoId) {
-    if (isDummy) {
-      return;
-    }
-
     await fetch("/api/user/analytics", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -314,10 +241,6 @@ class AnalyticsStore {
   }
 
   async trackVideoComplete(videoId) {
-    if (isDummy) {
-      return;
-    }
-
     await fetch("/api/user/analytics", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -355,24 +278,6 @@ class AdminStore {
   }
 
   async initialize() {
-    if (isDummy) {
-      this.users = [dummyUser];
-      this.totalUsers = 1;
-      this.activeSubscriptions = 1;
-      this.monthlyRevenue = 12;
-      this.analyticsData = {
-        totalWatchTime: 120,
-        avgSessionDuration: 25,
-        completionRate: 75,
-        popularVideos: dummyVideos.map((v) => ({
-          ...v,
-          views: Math.floor(Math.random() * 100),
-        })),
-      };
-      return;
-    }
-
-    // Load real admin data
     const [usersRes, analyticsRes] = await Promise.all([
       fetch("/api/admin/users"),
       fetch("/api/admin/analytics"),
@@ -392,21 +297,12 @@ class AdminStore {
   }
 
   async toggleUserActivation(userId, activate) {
-    if (isDummy) {
-      const user = this.users.find((u) => u.id === userId);
-      if (user) {
-        user.activeMember = activate;
-      }
-      return;
-    }
-
     await fetch("/api/admin/users/toggle", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, activate }),
     });
 
-    // Update local state
     const user = this.users.find((u) => u.id === userId);
     if (user) {
       user.activeMember = activate;
@@ -427,5 +323,4 @@ export const mobxStore = {
   subscriptionStore,
   analyticsStore,
   adminStore,
-  isDummy,
 };

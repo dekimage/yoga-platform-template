@@ -1,135 +1,44 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { observer } from "mobx-react-lite"
-import { useStore } from "@/stores/StoreProvider"
-import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { cn } from "@/lib/utils"
+import { observer } from "mobx-react-lite";
+import { useStore } from "@/stores/StoreProvider";
+import { Button } from "@/components/ui/button";
+import { UserNav } from "./UserNav";
 
 export const Header = observer(() => {
-  const pathname = usePathname()
-  const { authStore } = useStore()
-  const [open, setOpen] = useState(false)
+  const { authStore, subscriptionStore } = useStore();
 
-  const isAdmin = authStore.user?.isAdmin
-
-  const links = [
-    {
-      href: "/dashboard/videos",
-      label: "Videos",
-    },
-    {
-      href: "/dashboard/profile",
-      label: "Profile",
-    },
-    {
-      href: "/dashboard/billing",
-      label: "Billing",
-    },
-  ]
-
-  // Add admin link if user is admin
-  if (isAdmin) {
-    links.push({
-      href: "/dashboard/admin",
-      label: "Admin",
-    })
-  }
-
-  const handleLogout = async () => {
+  const handleSubscribe = async () => {
     try {
-      await authStore.logout()
-      window.location.href = "/"
+      const checkoutUrl = await subscriptionStore.createCheckoutSession({
+        email: authStore.user.email,
+        fullName: authStore.user.fullName,
+        marketingConsent: authStore.user.marketingConsent || false,
+      });
+      window.location.href = checkoutUrl;
     } catch (error) {
-      console.error("Logout failed:", error)
+      console.error("Failed to create checkout session:", error);
     }
-  }
+  };
 
   return (
-    <header className="sticky top-0 z-10 border-b bg-background">
-      <div className="flex h-16 items-center justify-between px-4">
-        <div className="flex md:hidden">
-          <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="icon">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-5 w-5"
-                >
-                  <line x1="3" y1="12" x2="21" y2="12"></line>
-                  <line x1="3" y1="6" x2="21" y2="6"></line>
-                  <line x1="3" y1="18" x2="21" y2="18"></line>
-                </svg>
-                <span className="sr-only">Toggle menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-64">
-              <div className="flex flex-col h-full">
-                <div className="p-4">
-                  <Link href="/" className="flex items-center gap-2">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-6 w-6"
-                    >
-                      <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"></path>
-                    </svg>
-                    <span className="text-xl font-bold">Yoga Platform</span>
-                  </Link>
-                </div>
-                <nav className="flex-1 p-4 space-y-1">
-                  {links.map((link) => (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      onClick={() => setOpen(false)}
-                      className={cn(
-                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium",
-                        pathname === link.href ? "bg-primary text-primary-foreground" : "hover:bg-muted",
-                      )}
-                    >
-                      {link.label}
-                    </Link>
-                  ))}
-                </nav>
-                <div className="p-4 border-t">
-                  <Button variant="outline" className="w-full" onClick={handleLogout}>
-                    Logout
-                  </Button>
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
+    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-14 items-center justify-end pr-4">
+        <nav className="flex items-center space-x-4">
+          {/* Show Subscribe Premium button only if user is not an active member */}
+          {authStore.user && !authStore.user.activeMember && (
+            <Button
+              onClick={handleSubscribe}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+            >
+              Subscribe Premium
+            </Button>
+          )}
 
-        <div className="md:hidden flex-1 text-center">
-          <h1 className="text-lg font-semibold">
-            {links.find((link) => link.href === pathname)?.label || "Dashboard"}
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" onClick={handleLogout}>
-            Logout
-          </Button>
-        </div>
+          {/* User Navigation */}
+          <UserNav />
+        </nav>
       </div>
     </header>
-  )
-})
+  );
+});
