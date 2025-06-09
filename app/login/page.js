@@ -20,10 +20,12 @@ import { Separator } from "@/components/ui/separator";
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
 import { observer } from "mobx-react-lite";
 import { useStore } from "@/stores/StoreProvider";
+import { useTheme } from "@/components/providers/ThemeProvider";
 
 const LoginPage = observer(() => {
   const router = useRouter();
   const { authStore } = useStore();
+  const theme = useTheme();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -46,24 +48,14 @@ const LoginPage = observer(() => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
+    <div className="min-h-screen gradient-background">
       <div className="container mx-auto px-4 py-8">
         <div className="flex min-h-screen items-center justify-center">
           <div className="w-full max-w-md space-y-8">
             {/* Logo and Brand */}
             <div className="text-center">
-              <div className="mx-auto h-20 w-20 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center mb-4">
-                {/* Replace with your actual logo */}
+              <div className="mx-auto h-20 w-20 rounded-full gradient-primary flex items-center justify-center mb-4">
                 <div className="text-white text-2xl font-bold">Y</div>
-                {/* Uncomment and use your actual logo:
-                <Image
-                  src="/logo.png"
-                  alt="Yoga Platform"
-                  width={48}
-                  height={48}
-                  className="rounded-full"
-                />
-                */}
               </div>
               <h1 className="text-3xl font-bold text-gray-900">Welcome Back</h1>
               <p className="mt-2 text-gray-600">
@@ -72,7 +64,7 @@ const LoginPage = observer(() => {
             </div>
 
             {/* Login Card */}
-            <Card className="shadow-xl border-0">
+            <Card className="card-theme">
               <CardHeader className="space-y-1 pb-6">
                 <CardTitle className="text-2xl font-semibold text-center">
                   Sign In
@@ -90,7 +82,6 @@ const LoginPage = observer(() => {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  {/* Email Field */}
                   <div className="space-y-2">
                     <Label htmlFor="email">Email Address</Label>
                     <div className="relative">
@@ -104,11 +95,12 @@ const LoginPage = observer(() => {
                         className="pl-10"
                         required
                         disabled={isLoading}
+                        autoComplete="email"
+                        name="email"
                       />
                     </div>
                   </div>
 
-                  {/* Password Field */}
                   <div className="space-y-2">
                     <Label htmlFor="password">Password</Label>
                     <div className="relative">
@@ -122,6 +114,8 @@ const LoginPage = observer(() => {
                         className="pl-10 pr-10"
                         required
                         disabled={isLoading}
+                        autoComplete="current-password"
+                        name="password"
                       />
                       <button
                         type="button"
@@ -134,7 +128,6 @@ const LoginPage = observer(() => {
                     </div>
                   </div>
 
-                  {/* Forgot Password Link */}
                   <div className="flex justify-end">
                     <Link
                       href="/forgot-password"
@@ -144,10 +137,9 @@ const LoginPage = observer(() => {
                     </Link>
                   </div>
 
-                  {/* Submit Button */}
                   <Button
                     type="submit"
-                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                    className="btn-primary w-full"
                     disabled={isLoading}
                   >
                     {isLoading ? (
@@ -165,10 +157,9 @@ const LoginPage = observer(() => {
                 </form>
               </CardContent>
 
-              <CardFooter className="flex flex-col space-y-4">
-                <Separator />
+              <div className="px-6 pb-6">
+                <Separator className="mb-4" />
 
-                {/* Sign Up Link */}
                 <div className="text-center text-sm">
                   <span className="text-gray-600">Don't have an account? </span>
                   <Link
@@ -179,8 +170,7 @@ const LoginPage = observer(() => {
                   </Link>
                 </div>
 
-                {/* Additional Links */}
-                <div className="flex justify-center space-x-4 text-xs text-gray-500">
+                <div className="flex justify-center space-x-4 text-xs text-gray-500 mt-4">
                   <Link
                     href="/privacy"
                     className="hover:text-gray-700 hover:underline"
@@ -195,10 +185,9 @@ const LoginPage = observer(() => {
                     Terms of Service
                   </Link>
                 </div>
-              </CardFooter>
+              </div>
             </Card>
 
-            {/* Additional Features */}
             <div className="text-center">
               <p className="text-sm text-gray-500">
                 Secure login powered by Firebase Authentication

@@ -1,94 +1,229 @@
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700;800&family=Source+Sans+Pro:wght@300;400;500;600;700&family=Dancing+Script:wght@400;500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-}
+/* 🌹 Cream Rose Theme CSS Variables */
+:root {
+  /* Primary Rose Colors */
+  --color-primary-50: #fdf2f8;
+  --color-primary-100: #fce7f3;
+  --color-primary-400: #f472b6;
+  --color-primary-500: #ec4899;
+  --color-primary-600: #db2777;
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-}
+  /* Secondary Cream Colors */
+  --color-secondary-50: #fffbf5;
+  --color-secondary-100: #fef7ed;
+  --color-secondary-200: #fed7aa;
+  --color-secondary-400: #fb923c;
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-  .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
+  /* Typography */
+  --font-family-sans: "Nunito", "Inter", system-ui, sans-serif;
+  --font-family-heading: "Playfair Display", Georgia, serif;
+  --font-family-body: "Source Sans Pro", system-ui, sans-serif;
+  --font-family-accent: "Dancing Script", cursive;
+
+  /* Existing shadcn variables */
+  --background: 0 0% 100%;
+  --foreground: 0 0% 3.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 3.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 3.9%;
+  --primary: 0 0% 9%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 0 0% 96.1%;
+  --secondary-foreground: 0 0% 9%;
+  --muted: 0 0% 96.1%;
+  --muted-foreground: 0 0% 45.1%;
+  --accent: 0 0% 96.1%;
+  --accent-foreground: 0 0% 9%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 0 0% 89.8%;
+  --input: 0 0% 89.8%;
+  --ring: 0 0% 3.9%;
+  --radius: 1rem;
 }
 
 @layer base {
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-family-body);
+    line-height: 1.6;
+    letter-spacing: 0.01em;
   }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-family-heading);
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+  }
+
+  h1 {
+    font-size: 3rem;
+    font-weight: 700;
+  }
+
+  h2 {
+    font-size: 2.25rem;
+    font-weight: 600;
+  }
+
+  h3 {
+    font-size: 1.875rem;
+    font-weight: 600;
+  }
+
+  p {
+    font-family: var(--font-family-sans);
+    line-height: 1.7;
+  }
+}
+
+/* 🌹 Cream Rose Theme Utilities */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Gradients */
+  .gradient-primary {
+    @apply bg-gradient-to-r from-rose-400 via-pink-300 to-orange-200;
+  }
+
+  .gradient-primary-hover {
+    @apply hover:from-rose-500 hover:via-pink-400 hover:to-orange-300;
+  }
+
+  .gradient-background {
+    @apply bg-gradient-to-br from-rose-50 via-orange-50 to-amber-50;
+  }
+
+  .gradient-hero {
+    @apply bg-gradient-to-br from-rose-100 via-orange-50 to-amber-100;
+  }
+
+  .gradient-accent {
+    @apply bg-gradient-to-r from-emerald-400 to-teal-300;
+  }
+
+  /* Cards */
+  .card-theme {
+    @apply bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl shadow-rose-500/10 border border-rose-100/50 transition-all duration-300;
+  }
+
+  .card-hover {
+    @apply hover:-translate-y-2 hover:shadow-2xl hover:shadow-rose-500/20;
+  }
+
+  .card-glass {
+    @apply bg-white/60 backdrop-blur-md rounded-3xl border border-white/20 shadow-xl;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    @apply bg-gradient-to-r from-rose-400 via-pink-300 to-orange-200 hover:from-rose-500 hover:via-pink-400 hover:to-orange-300 text-white font-medium py-4 px-8 rounded-2xl transition-all duration-300 ease-out hover:-translate-y-1 shadow-lg shadow-rose-200/50;
+  }
+
+  .btn-secondary {
+    @apply bg-white text-rose-600 border-2 border-rose-200 font-medium py-4 px-8 rounded-2xl hover:bg-rose-50 hover:border-rose-300 transition-all duration-300;
+  }
+
+  .btn-ghost {
+    @apply text-rose-600 hover:bg-rose-50 font-medium py-4 px-8 rounded-2xl transition-all duration-300;
+  }
+
+  /* Typography */
+  .font-heading {
+    font-family: var(--font-family-heading);
+  }
+
+  .font-body {
+    font-family: var(--font-family-body);
+  }
+
+  .font-accent {
+    font-family: var(--font-family-accent);
+  }
+
+  /* Text gradients */
+  .text-gradient-primary {
+    @apply bg-gradient-to-r from-rose-500 via-pink-400 to-orange-400 bg-clip-text text-transparent;
+  }
+
+  .text-gradient-accent {
+    @apply bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent;
+  }
+
+  /* Inputs */
+  .input-theme {
+    @apply w-full px-6 py-4 border-2 border-rose-200 rounded-2xl focus:ring-2 focus:ring-rose-300 focus:border-rose-400 transition-all duration-300 bg-white/80 backdrop-blur-sm;
+  }
+
+  /* Animations */
+  .animate-gentle-float {
+    animation: gentleFloat 6s ease-in-out infinite;
+  }
+
+  .animate-soft-pulse {
+    animation: softPulse 4s ease-in-out infinite;
+  }
+}
+
+/* 🎭 Custom Animations */
+@keyframes gentleFloat {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes softPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* 🌸 Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #fdf2f8;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #f472b6, #fb923c);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #ec4899, #f97316);
+}
+
+/* 🎯 Selection Styling */
+::selection {
+  background: #fce7f3;
+  color: #be185d;
 }
