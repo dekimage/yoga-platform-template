@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { observer } from "mobx-react-lite";
 import { useStore } from "@/stores/StoreProvider";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -19,17 +18,11 @@ import CategoriesCarousel from "@/components/video/CategoriesCarousel";
 const VideosPage = observer(() => {
   const { videoStore } = useStore();
   const searchParams = useSearchParams();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [levelFilter, setLevelFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [levelFilter, setLevelFilter] = useState("all");
 
-  // Get search query from URL params
-  useEffect(() => {
-    const urlSearch = searchParams.get("search");
-    if (urlSearch) {
-      setSearchQuery(urlSearch);
-    }
-  }, [searchParams]);
+  // Get search query from URL params (from global search)
+  const searchQuery = searchParams.get("search") || "";
 
   // Add useEffect to ensure videos are loaded when navigating to this page
   useEffect(() => {
@@ -57,23 +50,26 @@ const VideosPage = observer(() => {
   // Get unique categories and levels for filters
   const categories = [
     ...new Set(videoStore.videos.map((video) => video.category)),
-  ];
-  const levels = [...new Set(videoStore.videos.map((video) => video.level))];
+  ].filter(Boolean); // Remove any undefined/null values
+
+  const levels = [
+    ...new Set(videoStore.videos.map((video) => video.level)),
+  ].filter(Boolean); // Remove any undefined/null values
 
   // Filter videos based on search query and filters
   const filteredVideos = videoStore.videos.filter((video) => {
     const matchesSearch =
+      !searchQuery ||
       video.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       video.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       video.tags.some((tag) =>
         tag.toLowerCase().includes(searchQuery.toLowerCase())
       );
+
     const matchesCategory =
-      !categoryFilter ||
-      categoryFilter === "all" ||
-      video.category === categoryFilter;
-    const matchesLevel =
-      !levelFilter || levelFilter === "all" || video.level === levelFilter;
+      categoryFilter === "all" || video.category === categoryFilter;
+
+    const matchesLevel = levelFilter === "all" || video.level === levelFilter;
 
     return matchesSearch && matchesCategory && matchesLevel;
   });
@@ -84,6 +80,7 @@ const VideosPage = observer(() => {
         <h1 className="text-2xl font-bold mb-2">Yoga Videos</h1>
         <p className="text-muted-foreground">
           Browse our collection of premium yoga videos
+          {searchQuery && ` - searching for "${searchQuery}"`}
         </p>
       </div>
 
@@ -93,17 +90,11 @@ const VideosPage = observer(() => {
       {/* Tags Carousel */}
       <TagsCarousel />
 
-      {/* Search and Filters */}
-      <div className="grid gap-4 md:grid-cols-[1fr_200px_200px]">
-        <Input
-          placeholder="Search videos..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-
+      {/* Filters Only (Search moved to header) */}
+      <div className="flex gap-4">
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder="Category" />
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="All Categories" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
@@ -116,8 +107,8 @@ const VideosPage = observer(() => {
         </Select>
 
         <Select value={levelFilter} onValueChange={setLevelFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder="Level" />
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="All Levels" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Levels</SelectItem>
