@@ -1,4 +1,5 @@
 import { makeAutoObservable, runInAction } from "mobx";
+import AdminStore from "./adminStore";
 
 class AuthStore {
   user = null;
@@ -418,67 +419,6 @@ class AnalyticsStore {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "complete", videoId }),
     });
-  }
-}
-
-class AdminStore {
-  users = [];
-  totalUsers = 0;
-  activeSubscriptions = 0;
-  monthlyRevenue = 0;
-  analyticsData = {};
-  userSearchQuery = "";
-
-  constructor() {
-    makeAutoObservable(this);
-  }
-
-  get filteredUsers() {
-    if (!this.userSearchQuery) return this.users;
-
-    return this.users.filter(
-      (user) =>
-        user.fullName
-          .toLowerCase()
-          .includes(this.userSearchQuery.toLowerCase()) ||
-        user.email.toLowerCase().includes(this.userSearchQuery.toLowerCase())
-    );
-  }
-
-  setUserSearchQuery(query) {
-    this.userSearchQuery = query;
-  }
-
-  async initialize() {
-    const [usersRes, analyticsRes] = await Promise.all([
-      fetch("/api/admin/users"),
-      fetch("/api/admin/analytics"),
-    ]);
-
-    if (usersRes.ok) {
-      const usersData = await usersRes.json();
-      this.users = usersData.users;
-      this.totalUsers = usersData.total;
-      this.activeSubscriptions = usersData.activeSubscriptions;
-      this.monthlyRevenue = usersData.monthlyRevenue;
-    }
-
-    if (analyticsRes.ok) {
-      this.analyticsData = await analyticsRes.json();
-    }
-  }
-
-  async toggleUserActivation(userId, activate) {
-    await fetch("/api/admin/users/toggle", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, activate }),
-    });
-
-    const user = this.users.find((u) => u.id === userId);
-    if (user) {
-      user.activeMember = activate;
-    }
   }
 }
 

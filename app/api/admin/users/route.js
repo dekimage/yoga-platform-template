@@ -1,48 +1,60 @@
-import { NextResponse } from "next/server"
-import { firestore } from "@/lib/firebase"
-import { getTokenFromRequest, verifyToken } from "@/lib/auth"
+import { NextResponse } from "next/server";
+import { firestore } from "@/lib/firebase";
+
+function verifyAdminToken(request) {
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return false;
+  }
+
+  const token = authHeader.substring(7);
+  // Simple token verification (you could make this more secure)
+  try {
+    const decoded = Buffer.from(token, "base64").toString();
+    return decoded.includes(process.env.ADMIN_USERNAME);
+  } catch {
+    return false;
+  }
+}
 
 export async function GET(request) {
   try {
-    const token = getTokenFromRequest(request)
-    if (!token) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+    if (!verifyAdminToken(request)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decodedToken = await verifyToken(token)
-    const adminUserDoc = await firestore.collection("users").doc(decodedToken.uid).get()
-
-    if (!adminUserDoc.exists || !adminUserDoc.data().isAdmin) {
-      return NextResponse.json({ error: "Admin access required" }, { status: 403 })
-    }
-
-    const usersSnapshot = await firestore.collection("users").get()
-    const users = []
-    let activeSubscriptions = 0
-    let monthlyRevenue = 0
+    const usersSnapshot = await firestore.collection("users").get();
+    const users = [];
 
     usersSnapshot.forEach((doc) => {
-      const userData = doc.data()
+      const userData = doc.data();
       users.push({
         id: doc.id,
         ...userData,
-        createdAt: userData.createdAt.toDate().toISOString(),
-      })
+        createdAt:
+          userData.createdAt?.toDate?.()?.toISOString() || userData.createdAt,
+        updatedAt:
+          userData.updatedAt?.toDate?.()?.toISOString() || userData.updatedAt,
+        subscriptionEndsAt:
+          userData.subscriptionEndsAt?.toDate?.()?.toISOString() ||
+          userData.subscriptionEndsAt,
+        canceledAt:
+          userData.canceledAt?.toDate?.()?.toISOString() || userData.canceledAt,
+        webhookProcessedAt:
+          userData.webhookProcessedAt?.toDate?.()?.toISOString() ||
+          userData.webhookProcessedAt,
+        "analytics.lastSession":
+          userData.analytics?.lastSession?.toDate?.()?.toISOString() ||
+          userData.analytics?.lastSession,
+      });
+    });
 
-      if (userData.activeMember) {
-        activeSubscriptions++
-        monthlyRevenue += 12 // $12 per month
-      }
-    })
-
-    return NextResponse.json({
-      users,
-      total: users.length,
-      activeSubscriptions,
-      monthlyRevenue,
-    })
+    return NextResponse.json({ users });
   } catch (error) {
-    console.error("Error fetching users:", error)
-    return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 })
+    console.error("Error fetching users:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch users" },
+      { status: 500 }
+    );
   }
 }
