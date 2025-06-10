@@ -49,6 +49,12 @@ export async function GET(request) {
       );
     }
 
+    // Make sure the user data includes favoriteVideos
+    userData = {
+      ...userData,
+      favoriteVideos: userData.favoriteVideos || [],
+    };
+
     // Return user data
     return NextResponse.json({
       uid: decodedToken.uid,
@@ -60,6 +66,7 @@ export async function GET(request) {
       canceledAt: userData.canceledAt,
       willRenew: userData.willRenew,
       analytics: userData.analytics,
+      favoriteVideos: userData.favoriteVideos,
     });
   } catch (error) {
     console.error("❌ Error in /me API:", error);

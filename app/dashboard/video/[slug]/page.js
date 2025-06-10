@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { VideoPlayer } from "@/components/video/VideoPlayer";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { VideoCard } from "@/components/video/VideoCard";
+import FavoriteButton from "@/components/video/FavoriteButton";
 
 const VideoPage = observer(() => {
   const params = useParams();
@@ -66,6 +68,24 @@ const VideoPage = observer(() => {
     }
   };
 
+  const handleTagClick = (tag) => {
+    router.push(`/dashboard/videos/tag/${encodeURIComponent(tag)}`);
+  };
+
+  // SMART: Get related videos from MobX using IDs
+  const getRelatedVideos = () => {
+    if (!video?.relatedVideoIds || video.relatedVideoIds.length === 0) {
+      return [];
+    }
+
+    return video.relatedVideoIds
+      .map((id) => videoStore.videos.find((v) => v.id === id))
+      .filter(Boolean) // Remove any undefined videos
+      .slice(0, 3); // Limit to 3 videos
+  };
+
+  const relatedVideos = getRelatedVideos();
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -98,15 +118,17 @@ const VideoPage = observer(() => {
         onComplete={handleVideoComplete}
       />
 
-      <div>
+      <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{video.title}</h1>
-        <div className="flex flex-wrap gap-2 mt-2">
-          <Badge>{video.category}</Badge>
-          <Badge variant="outline">{video.level}</Badge>
-          <span className="text-sm text-muted-foreground">
-            {video.duration} minutes
-          </span>
-        </div>
+        <FavoriteButton videoId={video.id} className="h-10 w-10" />
+      </div>
+
+      <div className="flex flex-wrap gap-2 mt-2">
+        <Badge>{video.category}</Badge>
+        <Badge variant="outline">{video.level}</Badge>
+        <span className="text-sm text-muted-foreground">
+          {video.duration} minutes
+        </span>
       </div>
 
       <div className="prose max-w-none">
@@ -117,12 +139,29 @@ const VideoPage = observer(() => {
         <h3 className="font-medium mb-2">Tags</h3>
         <div className="flex flex-wrap gap-2">
           {video.tags.map((tag) => (
-            <Badge key={tag} variant="secondary">
+            <Badge
+              key={tag}
+              variant="secondary"
+              className="cursor-pointer hover:bg-secondary/80 transition-colors"
+              onClick={() => handleTagClick(tag)}
+            >
               {tag}
             </Badge>
           ))}
         </div>
       </div>
+
+      {/* Related Videos Section - SMART: Using MobX lookup */}
+      {relatedVideos.length > 0 && (
+        <div className="pt-6 border-t">
+          <h3 className="text-xl font-semibold mb-4">Related Videos</h3>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {relatedVideos.map((relatedVideo) => (
+              <VideoCard key={relatedVideo.id} video={relatedVideo} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 });

@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { observer } from "mobx-react-lite";
 import { useStore } from "@/stores/StoreProvider";
 import { UserNav } from "./UserNav";
+import { MobileSidebar } from "./MobileSidebar";
 import GlobalSearch from "@/components/search/GlobalSearch";
-import { Search, Menu, X } from "lucide-react";
+import { Search, X, Heart } from "lucide-react";
 
 export const Header = observer(() => {
   const { authStore } = useStore();
@@ -60,7 +61,13 @@ export const Header = observer(() => {
           {authStore.isAuthenticated ? (
             <div className="flex items-center space-x-4">
               <Button variant="ghost" asChild>
-                <Link href="/dashboard/videos">Dashboard</Link>
+                <Link href="/dashboard/videos">Videos</Link>
+              </Button>
+              <Button variant="ghost" asChild>
+                <Link href="/dashboard/favorites">
+                  <Heart className="h-4 w-4 mr-2" />
+                  Favorites
+                </Link>
               </Button>
               <UserNav />
             </div>
@@ -79,9 +86,12 @@ export const Header = observer(() => {
         {/* Mobile Header */}
         <div className="md:hidden">
           <div className="flex justify-between items-center">
-            <Link href="/" className="text-xl font-bold">
-              YogaPlatform
-            </Link>
+            <div className="flex items-center gap-2">
+              {authStore.isAuthenticated && <MobileSidebar />}
+              <Link href="/" className="text-xl font-bold">
+                YogaPlatform
+              </Link>
+            </div>
 
             <div className="flex items-center space-x-2">
               {authStore.isAuthenticated && (

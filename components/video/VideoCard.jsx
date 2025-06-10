@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import FavoriteButton from "./FavoriteButton";
 
 export function VideoCard({ video }) {
   const router = useRouter();
@@ -19,7 +20,7 @@ export function VideoCard({ video }) {
 
   return (
     <div
-      className="group cursor-pointer border border-gray-200 rounded-lg p-4"
+      className="group cursor-pointer border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
       onClick={handleCardClick}
     >
       <div className="relative overflow-hidden rounded-lg mb-3">
@@ -48,6 +49,12 @@ export function VideoCard({ video }) {
           <Badge variant="secondary" className="text-xs">
             {video.duration}min
           </Badge>
+        </div>
+        <div className="absolute top-2 left-2">
+          <FavoriteButton
+            videoId={video.id}
+            className="bg-background/80 backdrop-blur-sm"
+          />
         </div>
       </div>
       <div className="space-y-2">

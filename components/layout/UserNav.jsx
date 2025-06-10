@@ -123,6 +123,12 @@ export const UserNav = observer(() => {
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
+          <DropdownMenuItem onClick={() => router.push("/dashboard/videos")}>
+            Videos
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push("/dashboard/favorites")}>
+            Favorites
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => router.push("/dashboard/profile")}>
             Profile
           </DropdownMenuItem>
