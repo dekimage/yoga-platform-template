@@ -23,6 +23,7 @@ import {
   XCircle,
   Clock,
   DollarSign,
+  RefreshCw,
 } from "lucide-react";
 
 // Helper function to safely convert Firestore timestamp to Date
@@ -32,7 +33,12 @@ const convertToDate = (timestamp) => {
   // If it's already a Date object
   if (timestamp instanceof Date) return timestamp;
 
-  // If it's a Firestore timestamp with seconds property
+  // Handle Firestore timestamp with _seconds property (most common case)
+  if (timestamp._seconds) {
+    return new Date(timestamp._seconds * 1000);
+  }
+
+  // Handle regular Firestore timestamp with seconds property
   if (timestamp.seconds) {
     return new Date(timestamp.seconds * 1000);
   }
@@ -47,6 +53,19 @@ const convertToDate = (timestamp) => {
     return new Date(timestamp * 1000);
   }
 
+  // Last resort: try toDate method
+  try {
+    if (
+      timestamp &&
+      timestamp.toDate &&
+      typeof timestamp.toDate === "function"
+    ) {
+      return timestamp.toDate();
+    }
+  } catch (error) {
+    console.error("Failed to convert timestamp:", error);
+  }
+
   return null;
 };
 
@@ -56,6 +75,7 @@ const BillingPage = observer(() => {
   const [subscriptionDetails, setSubscriptionDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [canceling, setCanceling] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchBillingData();
@@ -93,6 +113,26 @@ const BillingPage = observer(() => {
     }
   };
 
+  // 🚀 NEW: Manual refresh function
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      console.log("🔄 Manually refreshing billing data...");
+
+      // Refresh user data first
+      await authStore.checkAuth();
+
+      // Then refresh billing data
+      await fetchBillingData();
+
+      console.log("✅ Billing data refreshed successfully");
+    } catch (error) {
+      console.error("❌ Failed to refresh billing data:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const handleManageSubscription = async () => {
     try {
       setLoading(true);
@@ -107,13 +147,14 @@ const BillingPage = observer(() => {
 
       if (response.ok) {
         // If it's a redirect response, get the redirect URL
-        if (response.redirected) {
-          window.location.href = response.url;
+        const redirectUrl = response.url;
+        if (redirectUrl && redirectUrl !== window.location.href) {
+          window.location.href = redirectUrl;
         } else {
-          // If it returns JSON with a portal URL
-          const result = await response.json();
-          if (result.portal_url) {
-            window.location.href = result.portal_url;
+          // If no redirect, try to get JSON response with URL
+          const data = await response.json();
+          if (data.url) {
+            window.location.href = data.url;
           }
         }
       } else {
@@ -241,9 +282,33 @@ const BillingPage = observer(() => {
     return "15.00";
   };
 
+  // Clean function to get next billing date
+  const getNextBillingInfo = () => {
+    const user = authStore.user;
+
+    if (!user?.subscriptionEndsAt) {
+      return { date: "Unknown", description: "No subscription data" };
+    }
+
+    // Convert Firestore timestamp to Date
+    const billingDate = convertToDate(user.subscriptionEndsAt);
+
+    if (!billingDate) {
+      return { date: "Unknown", description: "Invalid date" };
+    }
+
+    const isRenewing = user.willRenew === true;
+
+    return {
+      date: billingDate.toLocaleDateString(),
+      description: isRenewing ? "Auto-renewal date" : "Final access date",
+    };
+  };
+
   const statusInfo = getSubscriptionStatusInfo();
   const user = authStore.user;
   const actualPrice = getActualPrice();
+  const nextBillingInfo = getNextBillingInfo();
 
   if (loading) {
     return (
@@ -255,18 +320,33 @@ const BillingPage = observer(() => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Billing & Subscription</h1>
-        <p className="text-muted-foreground">
-          Manage your subscription and view payment history
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Billing & Subscription</h1>
+          <p className="text-muted-foreground">
+            Manage your subscription and view payment history
+          </p>
+        </div>
+
+        {/* 🚀 NEW: Refresh Button */}
+        <Button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          variant="outline"
+          size="sm"
+          className="flex items-center gap-2"
+        >
+          <RefreshCw
+            className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+          />
+          {refreshing ? "Refreshing..." : "Refresh Status"}
+        </Button>
       </div>
 
       {/* Subscription Overview */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            {statusInfo.icon}
             Subscription Overview
           </CardTitle>
           <CardDescription>
@@ -315,29 +395,18 @@ const BillingPage = observer(() => {
               </div>
             )}
 
-            {user?.subscriptionEndsAt && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-sm font-medium">
-                    {user.subscriptionStatus === "canceled"
-                      ? "Access Ends"
-                      : "Next Billing"}
-                  </p>
-                </div>
-                <p className="text-lg">
-                  {/* FIXED: Use safe date conversion */}
-                  {convertToDate(
-                    user.subscriptionEndsAt
-                  )?.toLocaleDateString() || "Unknown"}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {user.subscriptionStatus === "canceled"
-                    ? "Final access date"
-                    : "Auto-renewal date"}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <p className="text-sm font-medium">
+                  {user?.willRenew ? "Next Billing" : "Access Ends"}
                 </p>
               </div>
-            )}
+              <p className="text-lg">{nextBillingInfo.date}</p>
+              <p className="text-sm text-muted-foreground">
+                {nextBillingInfo.description}
+              </p>
+            </div>
           </div>
         </CardContent>
         <CardFooter>
@@ -383,10 +452,14 @@ const BillingPage = observer(() => {
                       <div>
                         <p className="font-medium">Monthly Subscription</p>
                         <p className="text-sm text-muted-foreground">
-                          {new Date(
-                            order.paidAt?.seconds * 1000 ||
-                              order.createdAt?.seconds * 1000
-                          ).toLocaleDateString()}
+                          {(() => {
+                            const paidDate =
+                              convertToDate(order.paidAt) ||
+                              convertToDate(order.createdAt);
+                            return paidDate
+                              ? paidDate.toLocaleDateString()
+                              : "Unknown Date";
+                          })()}
                         </p>
                       </div>
                     </div>
