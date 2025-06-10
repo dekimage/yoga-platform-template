@@ -1,38 +1,62 @@
-import { CustomerPortal } from "@polar-sh/nextjs";
+import { NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { firestore } from "@/lib/firebase";
 
-export const GET = CustomerPortal({
-  accessToken: process.env.POLAR_ACCESS_TOKEN,
-  getCustomerId: async (req) => {
-    try {
-      // Get the authenticated user's token
-      const token = getTokenFromRequest(req);
-      if (!token) {
-        throw new Error("Authentication required");
-      }
+export async function GET(request) {
+  try {
+    console.log("🔍 Portal access requested...");
 
-      // Verify the token and get user ID
-      const decodedToken = await verifyToken(token);
-
-      // Get user document from Firestore
-      const userDoc = await firestore
-        .collection("users")
-        .doc(decodedToken.uid)
-        .get();
-
-      if (!userDoc.exists) {
-        throw new Error("User not found");
-      }
-
-      const userData = userDoc.data();
-
-      // Return the Polar customer ID
-      return userData.polarCustomerId || "";
-    } catch (error) {
-      console.error("Error getting customer ID:", error);
-      return "";
+    const token = getTokenFromRequest(request);
+    if (!token) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
     }
-  },
-  server: "sandbox", // Use sandbox for testing
-});
+
+    const decodedToken = await verifyToken(token);
+    console.log("✅ Token verified for user:", decodedToken.uid);
+
+    // Get user document
+    const userDoc = await firestore
+      .collection("users")
+      .doc(decodedToken.uid)
+      .get();
+
+    if (!userDoc.exists) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const userData = userDoc.data();
+    console.log("📄 User data:", {
+      email: userData.email,
+      polarCustomerId: userData.polarCustomerId,
+      subscriptionId: userData.subscriptionId,
+    });
+
+    if (!userData.polarCustomerId) {
+      return NextResponse.json(
+        { error: "No customer ID found" },
+        { status: 400 }
+      );
+    }
+
+    // Build the direct portal URL using the format from your working email link
+    const portalUrl = `https://sandbox.polar.sh/yoga-platform-sandbox/portal/overview?id=${userData.polarCustomerId}`;
+
+    console.log("🔗 Portal URL:", portalUrl);
+
+    // Return the portal URL as JSON
+    return NextResponse.json({
+      success: true,
+      portal_url: portalUrl,
+      message: "Redirecting to customer portal",
+    });
+  } catch (error) {
+    console.error("❌ Error accessing portal:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to access portal" },
+      { status: 500 }
+    );
+  }
+}

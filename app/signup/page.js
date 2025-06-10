@@ -69,13 +69,40 @@ export default function SignUpPage() {
     setIsLoading(true);
 
     try {
-      // TODO: Implement signup functionality
-      // await authStore.signup(formData);
+      console.log("🔄 Calling signup API with:", {
+        email: formData.email,
+        fullName: formData.fullName,
+        marketingConsent: formData.marketingConsent,
+      });
 
-      // Simulate API call for now
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      router.push("/login?message=Account created successfully");
+      // Actually call the signup API
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          fullName: formData.fullName,
+          marketingConsent: formData.marketingConsent,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create account");
+      }
+
+      console.log("✅ Signup successful:", data);
+
+      // Redirect to login with success message
+      router.push(
+        "/login?message=Account created successfully! Please log in."
+      );
     } catch (err) {
+      console.error("❌ Signup error:", err);
       setError(err.message || "Failed to create account. Please try again.");
     } finally {
       setIsLoading(false);

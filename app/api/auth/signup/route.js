@@ -6,10 +6,17 @@ export async function POST(request) {
     const { email, password, fullName, marketingConsent } =
       await request.json();
 
-    console.log("Creating user account for:", email);
+    console.log("🔄 Creating user account for:", email);
+    console.log("📝 Request data:", {
+      email,
+      fullName,
+      marketingConsent,
+      passwordLength: password?.length,
+    });
 
     // Validate required fields
     if (!email || !password || !fullName) {
+      console.error("❌ Missing required fields");
       return NextResponse.json(
         { error: "Email, password, and full name are required" },
         { status: 400 }
@@ -18,11 +25,14 @@ export async function POST(request) {
 
     // Validate password length
     if (password.length < 6) {
+      console.error("❌ Password too short");
       return NextResponse.json(
         { error: "Password must be at least 6 characters long" },
         { status: 400 }
       );
     }
+
+    console.log("🔥 Creating Firebase user...");
 
     // Create Firebase user with email and password
     const userRecord = await auth.createUser({
@@ -31,7 +41,8 @@ export async function POST(request) {
       displayName: fullName,
     });
 
-    console.log("Firebase user created:", userRecord.uid);
+    console.log("✅ Firebase user created:", userRecord.uid);
+    console.log("📧 User email:", userRecord.email);
 
     // Create user document in Firestore
     const userData = {
@@ -39,6 +50,7 @@ export async function POST(request) {
       fullName,
       activeMember: false, // Default to false, they can upgrade later
       createdAt: new Date(),
+      updatedAt: new Date(),
       analytics: {
         minutesWatched: 0,
         monthsPaid: 0,
@@ -51,8 +63,9 @@ export async function POST(request) {
       marketingConsent: marketingConsent || false,
     };
 
+    console.log("💾 Creating Firestore document...");
     await firestore.collection("users").doc(userRecord.uid).set(userData);
-    console.log("User document created in Firestore");
+    console.log("✅ User document created in Firestore");
 
     return NextResponse.json({
       success: true,
@@ -64,7 +77,9 @@ export async function POST(request) {
       },
     });
   } catch (error) {
-    console.error("Signup error:", error);
+    console.error("❌ Signup error:", error);
+    console.error("❌ Error code:", error.code);
+    console.error("❌ Error message:", error.message);
 
     // Handle specific Firebase errors
     if (error.code === "auth/email-already-exists") {

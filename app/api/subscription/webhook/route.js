@@ -1,136 +1,74 @@
 import { auth, firestore } from "@/lib/firebase";
+import { verifyWebhookSignature } from "@/lib/webhook-verification";
+import {
+  isWebhookProcessed,
+  markWebhookProcessed,
+} from "@/lib/webhook-deduplication";
 
 export async function POST(request) {
   console.log("🎯 WEBHOOK RECEIVED AT:", new Date().toISOString());
   console.log("📦 Headers:", Object.fromEntries(request.headers.entries()));
 
   try {
-    // Get the raw body
+    // Get the raw body for signature verification
     const body = await request.text();
+
+    // Get signature from headers
+    const signature =
+      request.headers.get("x-polar-signature") ||
+      request.headers.get("x-signature") ||
+      request.headers.get("signature");
+
+    // Verify webhook signature (add POLAR_WEBHOOK_SECRET to your .env)
+    const webhookSecret = process.env.POLAR_WEBHOOK_SECRET;
+
+    if (
+      webhookSecret &&
+      !verifyWebhookSignature(body, signature, webhookSecret)
+    ) {
+      console.error("❌ Webhook signature verification failed");
+      return new Response("Unauthorized", { status: 401 });
+    }
+
     console.log("📦 Raw body:", body);
 
     // Parse JSON
     const data = JSON.parse(body);
+    const eventId = data.id || data.data?.id || `${data.type}_${Date.now()}`;
+
+    // Check if webhook already processed
+    if (await isWebhookProcessed(eventId, data.type)) {
+      console.log(`⚠️ Webhook ${eventId} already processed, skipping`);
+      return new Response("Already processed", { status: 200 });
+    }
+
     console.log("📦 Parsed webhook data:", JSON.stringify(data, null, 2));
     console.log("🏷️ Event type:", data.type);
 
-    // Handle order.paid specifically
-    if (data.type === "order.paid") {
-      console.log("💰 ORDER PAID EVENT DETECTED!");
+    // Handle different event types
+    switch (data.type) {
+      case "order.paid":
+        await handleOrderPaid(data.data);
+        break;
 
-      const orderData = data.data;
-      const customerEmail = orderData?.customer?.email;
-      const customerName = orderData?.customer?.name;
-      const customerId = orderData?.customer?.id;
+      case "subscription.canceled":
+        await handleSubscriptionCanceled(data.data);
+        break;
 
-      console.log("🔍 Extracted data:");
-      console.log("   - Email:", customerEmail);
-      console.log("   - Name:", customerName);
-      console.log("   - Customer ID:", customerId);
+      case "subscription.updated":
+        await handleSubscriptionUpdated(data.data);
+        break;
 
-      if (!customerEmail) {
-        console.error("❌ No customer email found in order.paid");
-        return new Response("No email", { status: 400 });
-      }
+      case "payment.failed":
+        await handlePaymentFailed(data.data);
+        break;
 
-      // Find user by email
-      console.log(`🔍 Searching for user with email: ${customerEmail}`);
-      const userQuery = await firestore
-        .collection("users")
-        .where("email", "==", customerEmail)
-        .limit(1)
-        .get();
-
-      console.log(
-        `📊 User search result: empty=${userQuery.empty}, size=${userQuery.size}`
-      );
-
-      if (!userQuery.empty) {
-        const userDoc = userQuery.docs[0];
-        const currentUserData = userDoc.data();
-
-        console.log(`✅ Found user ${userDoc.id}`);
-        console.log(
-          `📄 Current user data:`,
-          JSON.stringify(currentUserData, null, 2)
-        );
-
-        // Update user to active member
-        const updateData = {
-          activeMember: true,
-          polarCustomerId: customerId,
-          subscriptionId: orderData.subscription_id,
-          updatedAt: new Date(),
-          webhookProcessedAt: new Date(),
-          lastOrderId: orderData.id,
-        };
-
-        // Update analytics if exists
-        if (currentUserData.analytics) {
-          updateData.analytics = {
-            ...currentUserData.analytics,
-            monthsPaid: (currentUserData.analytics.monthsPaid || 0) + 1,
-            lastSession: new Date(),
-          };
-        }
-
-        console.log(
-          `💾 Updating user with:`,
-          JSON.stringify(updateData, null, 2)
-        );
-
-        await userDoc.ref.update(updateData);
-
-        console.log(
-          `✅ Successfully updated user ${userDoc.id} to active member`
-        );
-
-        // Verify the update worked
-        const verifyDoc = await userDoc.ref.get();
-        const verifyData = verifyDoc.data();
-        console.log(
-          `🔍 VERIFICATION - User after update:`,
-          JSON.stringify(verifyData, null, 2)
-        );
-
-        // Create order record
-        const orderRecord = {
-          userId: userDoc.id,
-          polarOrderId: orderData.id,
-          polarCustomerId: customerId,
-          status: orderData.status,
-          amount: orderData.amount,
-          currency: orderData.currency,
-          subscriptionId: orderData.subscription_id,
-          createdAt: new Date(orderData.created_at),
-          paidAt: new Date(),
-          webhookProcessedAt: new Date(),
-        };
-
-        console.log(
-          `💾 Creating order record:`,
-          JSON.stringify(orderRecord, null, 2)
-        );
-
-        await firestore
-          .collection("orders")
-          .doc(orderData.id)
-          .set(orderRecord, { merge: true });
-
-        console.log(`✅ Created order record ${orderData.id}`);
-      } else {
-        console.error(`❌ No user found with email: ${customerEmail}`);
-        console.log(`🔍 Available users in database:`);
-
-        // Debug: List all users to see what emails exist
-        const allUsers = await firestore.collection("users").limit(5).get();
-        allUsers.docs.forEach((doc) => {
-          console.log(`   - User ${doc.id}: ${doc.data().email}`);
-        });
-      }
-    } else {
-      console.log(`ℹ️ Ignoring event type: ${data.type}`);
+      default:
+        console.log(`ℹ️ Ignoring event type: ${data.type}`);
     }
+
+    // Mark as processed
+    await markWebhookProcessed(eventId, data.type, data);
 
     console.log("✅ Webhook processing completed");
     return new Response("OK", { status: 200 });
@@ -138,5 +76,316 @@ export async function POST(request) {
     console.error("❌ CRITICAL ERROR in webhook:", error);
     console.error("❌ Error stack:", error.stack);
     return new Response("Error", { status: 500 });
+  }
+}
+
+// Handle order paid (your existing logic)
+async function handleOrderPaid(orderData) {
+  console.log("💰 ORDER PAID EVENT DETECTED!");
+
+  const customerEmail = orderData?.customer?.email;
+  const customerName = orderData?.customer?.name;
+  const customerId = orderData?.customer?.id;
+
+  console.log("🔍 Extracted data:");
+  console.log("   - Email:", customerEmail);
+  console.log("   - Name:", customerName);
+  console.log("   - Customer ID:", customerId);
+
+  if (!customerEmail) {
+    console.error("❌ No customer email found in order.paid");
+    throw new Error("No email found");
+  }
+
+  // Check for duplicate processing
+  const existingOrder = await firestore
+    .collection("orders")
+    .doc(orderData.id)
+    .get();
+
+  if (existingOrder.exists) {
+    console.log("⚠️ Order already processed, skipping");
+    return;
+  }
+
+  // Find user by email
+  console.log(`🔍 Searching for user with email: ${customerEmail}`);
+  const userQuery = await firestore
+    .collection("users")
+    .where("email", "==", customerEmail)
+    .limit(1)
+    .get();
+
+  console.log(
+    `📊 User search result: empty=${userQuery.empty}, size=${userQuery.size}`
+  );
+
+  if (!userQuery.empty) {
+    const userDoc = userQuery.docs[0];
+    const currentUserData = userDoc.data();
+
+    console.log(`✅ Found user ${userDoc.id}`);
+    console.log(
+      `📄 Current user data:`,
+      JSON.stringify(currentUserData, null, 2)
+    );
+
+    // Update user to active member
+    const updateData = {
+      activeMember: true,
+      polarCustomerId: customerId,
+      subscriptionId: orderData.subscription_id,
+      updatedAt: new Date(),
+      webhookProcessedAt: new Date(),
+      lastOrderId: orderData.id,
+      subscriptionStatus: "active",
+    };
+
+    // Update analytics if exists
+    if (currentUserData.analytics) {
+      updateData.analytics = {
+        ...currentUserData.analytics,
+        monthsPaid: (currentUserData.analytics.monthsPaid || 0) + 1,
+        lastSession: new Date(),
+      };
+    }
+
+    console.log(`💾 Updating user with:`, JSON.stringify(updateData, null, 2));
+
+    await userDoc.ref.update(updateData);
+
+    console.log(`✅ Successfully updated user ${userDoc.id} to active member`);
+
+    // Create order record
+    const orderRecord = {
+      userId: userDoc.id,
+      polarOrderId: orderData.id,
+      polarCustomerId: customerId,
+      status: orderData.status,
+      amount: orderData.amount,
+      currency: orderData.currency,
+      subscriptionId: orderData.subscription_id,
+      createdAt: new Date(orderData.created_at),
+      paidAt: new Date(),
+      webhookProcessedAt: new Date(),
+      processed: true,
+    };
+
+    console.log(
+      `💾 Creating order record:`,
+      JSON.stringify(orderRecord, null, 2)
+    );
+
+    await firestore
+      .collection("orders")
+      .doc(orderData.id)
+      .set(orderRecord, { merge: true });
+
+    console.log(`✅ Created order record ${orderData.id}`);
+  } else {
+    console.error(`❌ No user found with email: ${customerEmail}`);
+    throw new Error(`User not found: ${customerEmail}`);
+  }
+}
+
+// Handle subscription cancellation
+async function handleSubscriptionCanceled(subscriptionData) {
+  console.log("❌ SUBSCRIPTION CANCELED EVENT DETECTED!");
+  console.log(
+    "📦 Subscription data:",
+    JSON.stringify(subscriptionData, null, 2)
+  );
+
+  const subscriptionId = subscriptionData.id;
+  const currentPeriodEnd = subscriptionData.current_period_end;
+
+  if (!subscriptionId) {
+    console.error("❌ No subscription ID found");
+    throw new Error("No subscription ID found");
+  }
+
+  // Find user by subscription ID
+  console.log(`🔍 Searching for user with subscription ID: ${subscriptionId}`);
+  const userQuery = await firestore
+    .collection("users")
+    .where("subscriptionId", "==", subscriptionId)
+    .limit(1)
+    .get();
+
+  if (!userQuery.empty) {
+    const userDoc = userQuery.docs[0];
+
+    console.log(`✅ Found user ${userDoc.id} with canceled subscription`);
+
+    // Calculate when access should end
+    const subscriptionEndsAt = currentPeriodEnd
+      ? new Date(currentPeriodEnd * 1000) // Polar sends Unix timestamp
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Fallback: 30 days from now
+
+    // Just mark as canceled - DON'T change activeMember yet
+    const updateData = {
+      subscriptionStatus: "canceled",
+      canceledAt: new Date(),
+      subscriptionEndsAt: subscriptionEndsAt,
+      willRenew: false,
+      updatedAt: new Date(),
+      webhookProcessedAt: new Date(),
+      // activeMember stays TRUE - will be checked in /me API
+    };
+
+    console.log(
+      `💾 Marking subscription as canceled (access until ${subscriptionEndsAt.toISOString()}):`,
+      JSON.stringify(updateData, null, 2)
+    );
+
+    await userDoc.ref.update(updateData);
+
+    console.log(
+      `✅ User ${
+        userDoc.id
+      } marked as canceled but access maintained until ${subscriptionEndsAt.toISOString()}`
+    );
+
+    // Log cancellation event
+    await firestore.collection("subscription_events").add({
+      userId: userDoc.id,
+      subscriptionId: subscriptionId,
+      eventType: "canceled",
+      canceledAt: new Date(),
+      accessEndsAt: subscriptionEndsAt,
+      eventData: subscriptionData,
+      processedAt: new Date(),
+    });
+  } else {
+    console.error(`❌ No user found with subscription ID: ${subscriptionId}`);
+    throw new Error(`User not found for subscription: ${subscriptionId}`);
+  }
+}
+
+// Handle subscription updates
+async function handleSubscriptionUpdated(subscriptionData) {
+  console.log("🔄 SUBSCRIPTION UPDATED EVENT DETECTED!");
+  console.log(
+    "📦 Subscription data:",
+    JSON.stringify(subscriptionData, null, 2)
+  );
+
+  const subscriptionId = subscriptionData.id;
+  const status = subscriptionData.status;
+
+  if (!subscriptionId) {
+    console.error("❌ No subscription ID found");
+    return;
+  }
+
+  // Find user by subscription ID
+  const userQuery = await firestore
+    .collection("users")
+    .where("subscriptionId", "==", subscriptionId)
+    .limit(1)
+    .get();
+
+  if (!userQuery.empty) {
+    const userDoc = userQuery.docs[0];
+
+    console.log(`✅ Found user ${userDoc.id} with updated subscription`);
+
+    // Update subscription status
+    const updateData = {
+      subscriptionStatus: status,
+      updatedAt: new Date(),
+      webhookProcessedAt: new Date(),
+    };
+
+    // If subscription becomes inactive, deactivate user
+    if (
+      status === "canceled" ||
+      status === "expired" ||
+      status === "past_due"
+    ) {
+      updateData.activeMember = false;
+      if (status === "canceled") {
+        updateData.canceledAt = new Date();
+      }
+    } else if (status === "active") {
+      updateData.activeMember = true;
+    }
+
+    await userDoc.ref.update(updateData);
+
+    console.log(
+      `✅ Updated user ${userDoc.id} subscription status to: ${status}`
+    );
+
+    // Log update event
+    await firestore.collection("subscription_events").add({
+      userId: userDoc.id,
+      subscriptionId: subscriptionId,
+      eventType: "updated",
+      newStatus: status,
+      eventData: subscriptionData,
+      processedAt: new Date(),
+    });
+  } else {
+    console.error(`❌ No user found with subscription ID: ${subscriptionId}`);
+  }
+}
+
+// Handle payment failures
+async function handlePaymentFailed(paymentData) {
+  console.log("💳 PAYMENT FAILED EVENT DETECTED!");
+  console.log("📦 Payment data:", JSON.stringify(paymentData, null, 2));
+
+  const customerEmail = paymentData?.customer?.email;
+  const subscriptionId = paymentData?.subscription_id;
+
+  if (!customerEmail && !subscriptionId) {
+    console.error("❌ No customer email or subscription ID found");
+    return;
+  }
+
+  // Find user by email or subscription ID
+  let userQuery;
+  if (subscriptionId) {
+    userQuery = await firestore
+      .collection("users")
+      .where("subscriptionId", "==", subscriptionId)
+      .limit(1)
+      .get();
+  } else {
+    userQuery = await firestore
+      .collection("users")
+      .where("email", "==", customerEmail)
+      .limit(1)
+      .get();
+  }
+
+  if (!userQuery.empty) {
+    const userDoc = userQuery.docs[0];
+
+    console.log(`⚠️ Payment failed for user ${userDoc.id}`);
+
+    // Update user with payment failure info
+    const updateData = {
+      lastPaymentFailed: true,
+      lastPaymentFailedAt: new Date(),
+      updatedAt: new Date(),
+      webhookProcessedAt: new Date(),
+    };
+
+    await userDoc.ref.update(updateData);
+
+    // Log payment failure event
+    await firestore.collection("subscription_events").add({
+      userId: userDoc.id,
+      subscriptionId: subscriptionId,
+      eventType: "payment_failed",
+      eventData: paymentData,
+      processedAt: new Date(),
+    });
+
+    console.log(`📝 Logged payment failure for user ${userDoc.id}`);
+  } else {
+    console.error(`❌ No user found for failed payment`);
   }
 }

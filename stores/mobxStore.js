@@ -183,6 +183,58 @@ class AuthStore {
     }
     return null;
   }
+
+  async checkAuth() {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      runInAction(() => {
+        this.isAuthenticated = false;
+        this.isInitialized = true;
+        this.user = null;
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/auth/me", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        runInAction(() => {
+          this.isAuthenticated = true;
+          this.user = {
+            ...userData,
+            // Convert Firestore timestamps to Date objects for easier handling
+            subscriptionEndsAt: userData.subscriptionEndsAt
+              ? new Date(userData.subscriptionEndsAt.seconds * 1000)
+              : null,
+            canceledAt: userData.canceledAt
+              ? new Date(userData.canceledAt.seconds * 1000)
+              : null,
+          };
+          this.isInitialized = true;
+        });
+      } else {
+        localStorage.removeItem("authToken");
+        runInAction(() => {
+          this.isAuthenticated = false;
+          this.isInitialized = true;
+          this.user = null;
+        });
+      }
+    } catch (error) {
+      console.error("Auth check failed:", error);
+      runInAction(() => {
+        this.isAuthenticated = false;
+        this.isInitialized = true;
+        this.user = null;
+      });
+    }
+  }
 }
 
 class VideoStore {
@@ -278,27 +330,25 @@ class SubscriptionStore {
 
   async createCheckoutSession(customerData) {
     try {
-      const response = await fetch("/api/subscription/create-checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(customerData),
+      const response = await fetch("/api/subscription/create", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create checkout session");
+        const errorText = await response.text();
+        console.error("❌ Checkout creation failed:", errorText);
+        throw new Error(`Failed to create checkout session: ${errorText}`);
       }
 
       const data = await response.json();
+      console.log("✅ Checkout session created:", data);
 
-      // Update the success URL to redirect to our thank you page
-      const checkoutUrl = data.url.replace(
-        "success_url=http%3A//localhost%3A3000/dashboard/videos",
-        `success_url=${encodeURIComponent(window.location.origin)}/thank-you`
-      );
-
-      return checkoutUrl;
+      return data.url;
     } catch (error) {
-      console.error("Error creating checkout session:", error);
+      console.error("❌ Error creating checkout session:", error);
       throw error;
     }
   }
