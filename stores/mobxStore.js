@@ -284,17 +284,45 @@ class VideoStore {
     }
   }
 
-  async getSignedVideoUrl(videoId) {
-    console.log("🎬 Getting signed video URL for:", videoId);
+  async getSignedVideoUrl(videoId, isPublic = false) {
+    console.log(
+      "🎬 Getting signed video URL for:",
+      videoId,
+      "isPublic:",
+      isPublic
+    );
 
+    // For public videos, use the public endpoint (no authentication required)
+    if (isPublic) {
+      console.log("📡 Making request to /api/videos/public (no auth required)");
+
+      const response = await fetch(`/api/videos/public?videoId=${videoId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      console.log("📡 Response status:", response.status);
+      console.log("📡 Response ok:", response.ok);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("❌ API Error:", errorData);
+        throw new Error(errorData.error || "Failed to get video URL");
+      }
+
+      const data = await response.json();
+      console.log("✅ Successfully got signed URL for public video");
+      return data.signedUrl;
+    }
+
+    // For private videos, use the existing secure endpoint
     const token = localStorage.getItem("authToken");
     console.log(
       "🔑 Token from localStorage:",
       token ? `${token.substring(0, 20)}...` : "null"
     );
-    console.log("🔑 Token exists:", !!token);
-    console.log("🔑 Token type:", typeof token);
-    console.log("🔑 Token length:", token ? token.length : 0);
 
     if (!token || token === "null" || token === "undefined") {
       console.error("❌ No valid token found in localStorage");
@@ -307,8 +335,6 @@ class VideoStore {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     };
-
-    console.log("📡 Request headers:", headers);
 
     const response = await fetch(`/api/videos/secure?videoId=${videoId}`, {
       method: "GET",
@@ -325,7 +351,7 @@ class VideoStore {
     }
 
     const data = await response.json();
-    console.log("✅ Successfully got signed URL");
+    console.log("✅ Successfully got signed URL for private video");
     return data.signedUrl;
   }
 }
