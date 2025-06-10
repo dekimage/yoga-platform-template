@@ -1,29 +1,37 @@
-@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700;800&family=Source+Sans+Pro:wght@300;400;500;600;700&family=Dancing+Script:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Dancing+Script:wght@400;500;600&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* 🌹 Cream Rose Theme CSS Variables */
+/* 🎨 SIMPLE THEME VARIABLES */
 :root {
-  /* Primary Rose Colors */
-  --color-primary-50: #fdf2f8;
-  --color-primary-100: #fce7f3;
-  --color-primary-400: #f472b6;
-  --color-primary-500: #ec4899;
-  --color-primary-600: #db2777;
+  --color-primary: #059669; /* Green */
+  --color-primary-light: #34d399;
+  --color-primary-dark: #047857;
+  --color-secondary: #d97706; /* Orange */
+  --color-secondary-light: #fbbf24;
+  --color-secondary-dark: #b45309;
 
-  /* Secondary Cream Colors */
-  --color-secondary-50: #fffbf5;
-  --color-secondary-100: #fef7ed;
-  --color-secondary-200: #fed7aa;
-  --color-secondary-400: #fb923c;
+  /* --font-heading: "Playfair Display", serif;
+  --font-body: "Nunito", sans-serif;
+  --font-accent: "Dancing Script", cursive; */
 
-  /* Typography */
-  --font-family-sans: "Nunito", "Inter", system-ui, sans-serif;
-  --font-family-heading: "Playfair Display", Georgia, serif;
-  --font-family-body: "Source Sans Pro", system-ui, sans-serif;
-  --font-family-accent: "Dancing Script", cursive;
+  --font-heading: "Merriweather", serif;
+  --font-body: "Source Sans Pro", sans-serif;
+  --font-accent: "Great Vibes", cursive;
+
+  /* --font-heading: 'Poppins', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-accent: 'Caveat', cursive;
+
+  --font-heading: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-accent: 'JetBrains Mono', monospace; */
+
+  /* --font-heading: "Crimson Text", serif;
+  --font-body: "Lato", sans-serif;
+  --font-accent: "Kalam", cursive; */
 
   /* Existing shadcn variables */
   --background: 0 0% 100%;
@@ -45,7 +53,7 @@
   --border: 0 0% 89.8%;
   --input: 0 0% 89.8%;
   --ring: 0 0% 3.9%;
-  --radius: 1rem;
+  --radius: 0.5rem;
 }
 
 @layer base {
@@ -55,9 +63,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-family-body);
-    line-height: 1.6;
-    letter-spacing: 0.01em;
+    font-family: var(--font-body);
   }
 
   h1,
@@ -66,164 +72,96 @@
   h4,
   h5,
   h6 {
-    font-family: var(--font-family-heading);
-    font-weight: 600;
-    line-height: 1.3;
-    letter-spacing: -0.02em;
-  }
-
-  h1 {
-    font-size: 3rem;
-    font-weight: 700;
-  }
-
-  h2 {
-    font-size: 2.25rem;
-    font-weight: 600;
-  }
-
-  h3 {
-    font-size: 1.875rem;
-    font-weight: 600;
-  }
-
-  p {
-    font-family: var(--font-family-sans);
-    line-height: 1.7;
+    font-family: var(--font-heading);
   }
 }
 
-/* 🌹 Cream Rose Theme Utilities */
+/* 🎨 REUSABLE THEME CLASSES */
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-
   /* Gradients */
   .gradient-primary {
-    @apply bg-gradient-to-r from-rose-400 via-pink-300 to-orange-200;
-  }
-
-  .gradient-primary-hover {
-    @apply hover:from-rose-500 hover:via-pink-400 hover:to-orange-300;
+    background: linear-gradient(
+      135deg,
+      var(--color-primary),
+      var(--color-primary-light)
+    );
   }
 
   .gradient-background {
-    @apply bg-gradient-to-br from-rose-50 via-orange-50 to-amber-50;
-  }
-
-  .gradient-hero {
-    @apply bg-gradient-to-br from-rose-100 via-orange-50 to-amber-100;
-  }
-
-  .gradient-accent {
-    @apply bg-gradient-to-r from-emerald-400 to-teal-300;
-  }
-
-  /* Cards */
-  .card-theme {
-    @apply bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl shadow-rose-500/10 border border-rose-100/50 transition-all duration-300;
-  }
-
-  .card-hover {
-    @apply hover:-translate-y-2 hover:shadow-2xl hover:shadow-rose-500/20;
-  }
-
-  .card-glass {
-    @apply bg-white/60 backdrop-blur-md rounded-3xl border border-white/20 shadow-xl;
+    background: linear-gradient(135deg, #fdf2f8, #fffbf5, #fef3c7);
   }
 
   /* Buttons */
   .btn-primary {
-    @apply bg-gradient-to-r from-rose-400 via-pink-300 to-orange-200 hover:from-rose-500 hover:via-pink-400 hover:to-orange-300 text-white font-medium py-4 px-8 rounded-2xl transition-all duration-300 ease-out hover:-translate-y-1 shadow-lg shadow-rose-200/50;
+    @apply text-white font-medium py-3 px-6 rounded-2xl transition-all duration-300 hover:-translate-y-1 shadow-lg;
+    background: linear-gradient(
+      135deg,
+      var(--color-primary),
+      var(--color-primary-light)
+    );
+  }
+
+  .btn-primary:hover {
+    background: linear-gradient(
+      135deg,
+      var(--color-primary-dark),
+      var(--color-primary)
+    );
   }
 
   .btn-secondary {
-    @apply bg-white text-rose-600 border-2 border-rose-200 font-medium py-4 px-8 rounded-2xl hover:bg-rose-50 hover:border-rose-300 transition-all duration-300;
+    @apply bg-white font-medium py-3 px-6 rounded-2xl transition-all duration-300 border-2;
+    color: var(--color-primary);
+    border-color: var(--color-primary-light);
   }
 
-  .btn-ghost {
-    @apply text-rose-600 hover:bg-rose-50 font-medium py-4 px-8 rounded-2xl transition-all duration-300;
+  .btn-secondary:hover {
+    background-color: var(--color-primary-light);
+    color: white;
   }
 
-  /* Typography */
+  /* Cards */
+  .card-theme {
+    @apply bg-white rounded-3xl shadow-xl border transition-all duration-300;
+    border-color: var(--color-primary-light);
+    border-opacity: 0.2;
+  }
+
+  .card-hover:hover {
+    @apply -translate-y-1;
+    box-shadow: 0 20px 25px -5px rgba(236, 72, 153, 0.25);
+  }
+
+  /* Text */
+  .text-primary {
+    color: var(--color-primary);
+  }
+
+  .text-secondary {
+    color: var(--color-secondary);
+  }
+
+  .text-gradient {
+    background: linear-gradient(
+      135deg,
+      var(--color-primary),
+      var(--color-secondary)
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Fonts */
   .font-heading {
-    font-family: var(--font-family-heading);
+    font-family: var(--font-heading);
   }
 
   .font-body {
-    font-family: var(--font-family-body);
+    font-family: var(--font-body);
   }
 
   .font-accent {
-    font-family: var(--font-family-accent);
+    font-family: var(--font-accent);
   }
-
-  /* Text gradients */
-  .text-gradient-primary {
-    @apply bg-gradient-to-r from-rose-500 via-pink-400 to-orange-400 bg-clip-text text-transparent;
-  }
-
-  .text-gradient-accent {
-    @apply bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent;
-  }
-
-  /* Inputs */
-  .input-theme {
-    @apply w-full px-6 py-4 border-2 border-rose-200 rounded-2xl focus:ring-2 focus:ring-rose-300 focus:border-rose-400 transition-all duration-300 bg-white/80 backdrop-blur-sm;
-  }
-
-  /* Animations */
-  .animate-gentle-float {
-    animation: gentleFloat 6s ease-in-out infinite;
-  }
-
-  .animate-soft-pulse {
-    animation: softPulse 4s ease-in-out infinite;
-  }
-}
-
-/* 🎭 Custom Animations */
-@keyframes gentleFloat {
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-@keyframes softPulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.8;
-  }
-}
-
-/* 🌸 Scrollbar Styling */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #fdf2f8;
-}
-
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #f472b6, #fb923c);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #ec4899, #f97316);
-}
-
-/* 🎯 Selection Styling */
-::selection {
-  background: #fce7f3;
-  color: #be185d;
 }

@@ -1,26 +1,18 @@
-"use client"
+"use client";
 
-import { useRef, useEffect } from "react"
+import { useRef, useEffect } from "react";
 
 export function VideoPlayer({ url, title, onComplete }) {
-  const videoRef = useRef(null)
+  const iframeRef = useRef(null);
 
   useEffect(() => {
-    const video = videoRef.current
-    if (!video) return
-
-    const handleEnded = () => {
-      if (onComplete) {
-        onComplete()
-      }
+    // For iframe-based players, we can use Bunny.net's Player.js library
+    // for advanced event handling if needed
+    if (onComplete) {
+      // This is a placeholder for video completion tracking
+      // You can implement this using Bunny.net's Player.js library
     }
-
-    video.addEventListener("ended", handleEnded)
-
-    return () => {
-      video.removeEventListener("ended", handleEnded)
-    }
-  }, [onComplete])
+  }, [onComplete]);
 
   if (!url) {
     return (
@@ -30,21 +22,40 @@ export function VideoPlayer({ url, title, onComplete }) {
           <p className="text-muted-foreground">Loading video...</p>
         </div>
       </div>
-    )
+    );
   }
 
+  // Check if URL is an iframe embed URL (Bunny.net format)
+  const isIframeUrl = url.includes("iframe.mediadelivery.net");
+
+  if (isIframeUrl) {
+    return (
+      <div className="aspect-video bg-black rounded-lg overflow-hidden">
+        <iframe
+          ref={iframeRef}
+          src={url}
+          className="w-full h-full border-0"
+          allow="autoplay; fullscreen; picture-in-picture"
+          allowFullScreen
+          title={title || "Video Player"}
+        />
+      </div>
+    );
+  }
+
+  // Fallback to HTML5 video for other URLs
   return (
     <div className="aspect-video bg-black rounded-lg overflow-hidden">
       <video
-        ref={videoRef}
         className="w-full h-full"
         controls
         preload="metadata"
         poster="/placeholder.svg?height=400&width=600"
+        onEnded={onComplete}
       >
         <source src={url} type="video/mp4" />
         Your browser does not support the video tag.
       </video>
     </div>
-  )
+  );
 }

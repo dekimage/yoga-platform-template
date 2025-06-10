@@ -1,10 +1,10 @@
-import Link from "next/link"
-import { Badge } from "@/components/ui/badge"
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 
 export function VideoCard({ video }) {
   return (
     <Link href={`/dashboard/video/${video.slug}`}>
-      <div className="group cursor-pointer">
+      <div className="group cursor-pointer border border-gray-200 rounded-lg p-4">
         <div className="relative overflow-hidden rounded-lg mb-3">
           <img
             src={video.thumbnail || "/placeholder.svg?height=200&width=300"}
@@ -34,7 +34,9 @@ export function VideoCard({ video }) {
           </div>
         </div>
         <div className="space-y-2">
-          <h3 className="font-semibold line-clamp-2 group-hover:text-primary transition-colors">{video.title}</h3>
+          <h3 className="font-semibold line-clamp-2 group-hover:text-primary transition-colors">
+            {video.title}
+          </h3>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs">
               {video.category}
@@ -43,9 +45,11 @@ export function VideoCard({ video }) {
               {video.level}
             </Badge>
           </div>
-          <p className="text-sm text-muted-foreground line-clamp-2">{video.description}</p>
+          <p className="text-sm text-muted-foreground line-clamp-2">
+            {video.description}
+          </p>
         </div>
       </div>
     </Link>
-  )
+  );
 }

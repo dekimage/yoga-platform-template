@@ -39,7 +39,7 @@ const LoginPage = observer(() => {
 
     try {
       await authStore.login(email, password);
-      router.push("/dashboard");
+      router.push("/dashboard/videos");
     } catch (err) {
       setError(err.message || "Login failed. Please check your credentials.");
     } finally {

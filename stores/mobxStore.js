@@ -1,4 +1,4 @@
-import { makeAutoObservable } from "mobx";
+import { makeAutoObservable, runInAction } from "mobx";
 
 class AuthStore {
   user = null;
@@ -195,27 +195,76 @@ class VideoStore {
   }
 
   async fetchVideos() {
-    this.loading = true;
+    runInAction(() => {
+      this.loading = true;
+    });
+
     try {
       const response = await fetch("/api/videos");
-      if (response.ok) {
-        this.videos = await response.json();
-      }
+      const data = await response.json();
+
+      runInAction(() => {
+        this.videos = data;
+        this.loading = false;
+        this.isInitialized = true;
+      });
     } catch (error) {
       console.error("Error fetching videos:", error);
-    } finally {
-      this.loading = false;
-      this.isInitialized = true;
+      runInAction(() => {
+        this.loading = false;
+        this.isInitialized = true;
+      });
+    }
+  }
+
+  async ensureVideosLoaded() {
+    if (!this.isInitialized && !this.loading) {
+      await this.fetchVideos();
     }
   }
 
   async getSignedVideoUrl(videoId) {
-    const response = await fetch(`/api/videos/secure?videoId=${videoId}`);
+    console.log("🎬 Getting signed video URL for:", videoId);
+
+    const token = localStorage.getItem("authToken");
+    console.log(
+      "🔑 Token from localStorage:",
+      token ? `${token.substring(0, 20)}...` : "null"
+    );
+    console.log("🔑 Token exists:", !!token);
+    console.log("🔑 Token type:", typeof token);
+    console.log("🔑 Token length:", token ? token.length : 0);
+
+    if (!token || token === "null" || token === "undefined") {
+      console.error("❌ No valid token found in localStorage");
+      throw new Error("No authentication token found");
+    }
+
+    console.log("📡 Making request to /api/videos/secure with token");
+
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    };
+
+    console.log("📡 Request headers:", headers);
+
+    const response = await fetch(`/api/videos/secure?videoId=${videoId}`, {
+      method: "GET",
+      headers: headers,
+    });
+
+    console.log("📡 Response status:", response.status);
+    console.log("📡 Response ok:", response.ok);
+
     if (!response.ok) {
-      throw new Error("Failed to get video URL");
+      const errorData = await response.json();
+      console.error("❌ API Error:", errorData);
+      throw new Error(errorData.error || "Failed to get video URL");
     }
 
     const data = await response.json();
+    console.log("✅ Successfully got signed URL");
     return data.signedUrl;
   }
 }
