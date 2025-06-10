@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { observer } from "mobx-react-lite";
 import { useStore } from "@/stores/StoreProvider";
 import { Input } from "@/components/ui/input";
@@ -12,17 +13,27 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { VideoCard } from "@/components/video/VideoCard";
+import TagsCarousel from "@/components/video/TagsCarousel";
+import CategoriesCarousel from "@/components/video/CategoriesCarousel";
 
 const VideosPage = observer(() => {
   const { videoStore } = useStore();
+  const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [levelFilter, setLevelFilter] = useState("");
 
+  // Get search query from URL params
+  useEffect(() => {
+    const urlSearch = searchParams.get("search");
+    if (urlSearch) {
+      setSearchQuery(urlSearch);
+    }
+  }, [searchParams]);
+
   // Add useEffect to ensure videos are loaded when navigating to this page
   useEffect(() => {
     const loadVideos = async () => {
-      // Check if videos are empty or not initialized, then fetch them
       if (
         videoStore.videos.length === 0 &&
         !videoStore.loading &&
@@ -35,14 +46,13 @@ const VideosPage = observer(() => {
         videoStore.isInitialized &&
         !videoStore.loading
       ) {
-        // If initialized but still empty, try fetching again
         console.log("🎬 Videos initialized but empty, refetching...");
         await videoStore.fetchVideos();
       }
     };
 
     loadVideos();
-  }, []); // Empty dependency array - only run once when component mounts
+  }, []);
 
   // Get unique categories and levels for filters
   const categories = [
@@ -54,10 +64,16 @@ const VideosPage = observer(() => {
   const filteredVideos = videoStore.videos.filter((video) => {
     const matchesSearch =
       video.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      video.description.toLowerCase().includes(searchQuery.toLowerCase());
+      video.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      video.tags.some((tag) =>
+        tag.toLowerCase().includes(searchQuery.toLowerCase())
+      );
     const matchesCategory =
-      !categoryFilter || video.category === categoryFilter;
-    const matchesLevel = !levelFilter || video.level === levelFilter;
+      !categoryFilter ||
+      categoryFilter === "all" ||
+      video.category === categoryFilter;
+    const matchesLevel =
+      !levelFilter || levelFilter === "all" || video.level === levelFilter;
 
     return matchesSearch && matchesCategory && matchesLevel;
   });
@@ -71,6 +87,13 @@ const VideosPage = observer(() => {
         </p>
       </div>
 
+      {/* Categories Carousel */}
+      <CategoriesCarousel />
+
+      {/* Tags Carousel */}
+      <TagsCarousel />
+
+      {/* Search and Filters */}
       <div className="grid gap-4 md:grid-cols-[1fr_200px_200px]">
         <Input
           placeholder="Search videos..."
@@ -107,6 +130,7 @@ const VideosPage = observer(() => {
         </Select>
       </div>
 
+      {/* Results */}
       {videoStore.loading ? (
         <div className="flex justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
