@@ -34,7 +34,12 @@ export async function POST(request) {
 
     // Parse JSON
     const data = JSON.parse(body);
-    const eventId = data.id || data.data?.id || `${data.type}_${Date.now()}`;
+
+    // FIXED: Use the actual webhook ID from headers, not the subscription ID
+    const webhookId = request.headers.get("webhook-id");
+    const eventId = webhookId || `${data.type}_${Date.now()}_${Math.random()}`;
+
+    console.log("🆔 Using webhook ID:", eventId);
 
     // Check if webhook already processed
     if (await isWebhookProcessed(eventId, data.type)) {
@@ -188,7 +193,7 @@ async function handleOrderPaid(orderData) {
   }
 }
 
-// Handle subscription cancellation
+// Handle subscription cancellation - FIXED DATE HANDLING
 async function handleSubscriptionCanceled(subscriptionData) {
   console.log("❌ SUBSCRIPTION CANCELED EVENT DETECTED!");
   console.log(
@@ -217,10 +222,28 @@ async function handleSubscriptionCanceled(subscriptionData) {
 
     console.log(`✅ Found user ${userDoc.id} with canceled subscription`);
 
-    // Calculate when access should end
-    const subscriptionEndsAt = currentPeriodEnd
-      ? new Date(currentPeriodEnd * 1000) // Polar sends Unix timestamp
-      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Fallback: 30 days from now
+    // FIXED: Safely calculate when access should end
+    let subscriptionEndsAt;
+
+    if (currentPeriodEnd && !isNaN(currentPeriodEnd)) {
+      // Polar sends Unix timestamp - convert to Date
+      subscriptionEndsAt = new Date(currentPeriodEnd * 1000);
+      console.log(
+        `📅 Using current_period_end: ${currentPeriodEnd} -> ${subscriptionEndsAt.toISOString()}`
+      );
+    } else {
+      // Fallback: 30 days from now if we don't have valid end date
+      subscriptionEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      console.log(
+        `📅 Using fallback date (30 days): ${subscriptionEndsAt.toISOString()}`
+      );
+    }
+
+    // Validate the date before using it
+    if (isNaN(subscriptionEndsAt.getTime())) {
+      console.error("❌ Invalid date calculated, using fallback");
+      subscriptionEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    }
 
     // Just mark as canceled - DON'T change activeMember yet
     const updateData = {
@@ -272,6 +295,8 @@ async function handleSubscriptionUpdated(subscriptionData) {
 
   const subscriptionId = subscriptionData.id;
   const status = subscriptionData.status;
+  const cancelAtPeriodEnd = subscriptionData.cancel_at_period_end;
+  const canceledAt = subscriptionData.canceled_at;
 
   if (!subscriptionId) {
     console.error("❌ No subscription ID found");
@@ -290,31 +315,57 @@ async function handleSubscriptionUpdated(subscriptionData) {
 
     console.log(`✅ Found user ${userDoc.id} with updated subscription`);
 
-    // Update subscription status
+    // FIXED: Handle the case where subscription is "active" but canceled
+    let subscriptionStatus = status;
     const updateData = {
-      subscriptionStatus: status,
       updatedAt: new Date(),
       webhookProcessedAt: new Date(),
     };
 
-    // If subscription becomes inactive, deactivate user
-    if (
-      status === "canceled" ||
-      status === "expired" ||
-      status === "past_due"
-    ) {
-      updateData.activeMember = false;
-      if (status === "canceled") {
-        updateData.canceledAt = new Date();
+    // If subscription is marked to cancel at period end, treat it as canceled
+    if (cancelAtPeriodEnd && canceledAt) {
+      console.log("🔄 Subscription is active but will cancel at period end");
+      subscriptionStatus = "canceled";
+      updateData.subscriptionStatus = "canceled";
+      updateData.canceledAt = new Date(canceledAt);
+      updateData.willRenew = false;
+
+      // Calculate when access ends
+      const currentPeriodEnd = subscriptionData.current_period_end;
+      if (currentPeriodEnd) {
+        updateData.subscriptionEndsAt = new Date(currentPeriodEnd);
+        console.log(
+          `📅 Access will end at: ${updateData.subscriptionEndsAt.toISOString()}`
+        );
       }
-    } else if (status === "active") {
-      updateData.activeMember = true;
+
+      // Keep activeMember true until the actual end date
+      console.log("✅ Keeping activeMember=true until subscription ends");
+    } else {
+      // Normal subscription update
+      updateData.subscriptionStatus = status;
+
+      // If subscription becomes inactive, deactivate user
+      if (
+        status === "canceled" ||
+        status === "expired" ||
+        status === "past_due"
+      ) {
+        updateData.activeMember = false;
+        if (status === "canceled") {
+          updateData.canceledAt = new Date();
+          updateData.willRenew = false;
+        }
+      } else if (status === "active") {
+        updateData.activeMember = true;
+        updateData.willRenew = true;
+      }
     }
 
     await userDoc.ref.update(updateData);
 
     console.log(
-      `✅ Updated user ${userDoc.id} subscription status to: ${status}`
+      `✅ Updated user ${userDoc.id} subscription status to: ${subscriptionStatus}`
     );
 
     // Log update event
@@ -322,7 +373,8 @@ async function handleSubscriptionUpdated(subscriptionData) {
       userId: userDoc.id,
       subscriptionId: subscriptionId,
       eventType: "updated",
-      newStatus: status,
+      newStatus: subscriptionStatus,
+      cancelAtPeriodEnd: cancelAtPeriodEnd,
       eventData: subscriptionData,
       processedAt: new Date(),
     });

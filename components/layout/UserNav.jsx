@@ -26,6 +26,31 @@ const getAvatarShortcut = (name) => {
     .slice(0, 2);
 };
 
+// Helper function to safely convert Firestore timestamp to Date
+const convertToDate = (timestamp) => {
+  if (!timestamp) return null;
+
+  // If it's already a Date object
+  if (timestamp instanceof Date) return timestamp;
+
+  // If it's a Firestore timestamp with seconds property
+  if (timestamp.seconds) {
+    return new Date(timestamp.seconds * 1000);
+  }
+
+  // If it's a string, try to parse it
+  if (typeof timestamp === "string") {
+    return new Date(timestamp);
+  }
+
+  // If it's a number (Unix timestamp)
+  if (typeof timestamp === "number") {
+    return new Date(timestamp * 1000);
+  }
+
+  return null;
+};
+
 export const UserNav = observer(() => {
   const router = useRouter();
   const { authStore } = useStore();
@@ -39,14 +64,19 @@ export const UserNav = observer(() => {
     }
 
     if (user.subscriptionStatus === "canceled" && user.subscriptionEndsAt) {
-      const daysLeft = Math.ceil(
-        (user.subscriptionEndsAt - new Date()) / (1000 * 60 * 60 * 24)
-      );
-      return {
-        text: `Ends in ${daysLeft} days`,
-        variant: "destructive",
-        detail: `Access until ${user.subscriptionEndsAt.toLocaleDateString()}`,
-      };
+      const endDate = convertToDate(user.subscriptionEndsAt);
+
+      if (endDate) {
+        const daysLeft = Math.ceil(
+          (endDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+        );
+
+        return {
+          text: `Ends in ${daysLeft} days`,
+          variant: "destructive",
+          detail: `Access until ${endDate.toLocaleDateString()}`,
+        };
+      }
     }
 
     return { text: "Premium Member", variant: "default" };
@@ -54,11 +84,17 @@ export const UserNav = observer(() => {
 
   const status = getSubscriptionStatus();
 
+  const handleLogout = () => {
+    authStore.logout();
+    router.push("/");
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
+            <AvatarImage src={user.avatar} alt={user.fullName} />
             <AvatarFallback>{getAvatarShortcut(user.fullName)}</AvatarFallback>
           </Avatar>
         </Button>
@@ -70,35 +106,32 @@ export const UserNav = observer(() => {
             <p className="text-xs leading-none text-muted-foreground">
               {user.email}
             </p>
-            <div className="flex items-center gap-2 mt-2">
-              <Badge variant={status.variant} className="text-xs">
-                {status.text}
-              </Badge>
-            </div>
-            {status.detail && (
-              <p className="text-xs text-muted-foreground">{status.detail}</p>
-            )}
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem onClick={() => router.push("/dashboard")}>
-            Dashboard
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => router.push("/dashboard/videos")}>
-            My Videos
+          <div className="px-2 py-1.5">
+            <Badge variant={status.variant} className="text-xs">
+              {status.text}
+            </Badge>
+            {status.detail && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {status.detail}
+              </p>
+            )}
+          </div>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuItem onClick={() => router.push("/dashboard/profile")}>
+            Profile
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => router.push("/dashboard/billing")}>
             Billing
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => router.push("/dashboard/settings")}>
-            Settings
-          </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => authStore.logout()}>
-          Log out
-        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

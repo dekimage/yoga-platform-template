@@ -1,42 +1,82 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { observer } from "mobx-react-lite"
-import { useStore } from "@/stores/StoreProvider"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { VideoCard } from "@/components/video/VideoCard"
+import { useState, useEffect } from "react";
+import { observer } from "mobx-react-lite";
+import { useStore } from "@/stores/StoreProvider";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { VideoCard } from "@/components/video/VideoCard";
 
 const VideosPage = observer(() => {
-  const { videoStore } = useStore()
-  const [searchQuery, setSearchQuery] = useState("")
-  const [categoryFilter, setCategoryFilter] = useState("")
-  const [levelFilter, setLevelFilter] = useState("")
+  const { videoStore } = useStore();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [levelFilter, setLevelFilter] = useState("");
+
+  // Add useEffect to ensure videos are loaded when navigating to this page
+  useEffect(() => {
+    const loadVideos = async () => {
+      // Check if videos are empty or not initialized, then fetch them
+      if (
+        videoStore.videos.length === 0 &&
+        !videoStore.loading &&
+        !videoStore.isInitialized
+      ) {
+        console.log("🎬 Videos not loaded, fetching from Contentful...");
+        await videoStore.fetchVideos();
+      } else if (
+        videoStore.videos.length === 0 &&
+        videoStore.isInitialized &&
+        !videoStore.loading
+      ) {
+        // If initialized but still empty, try fetching again
+        console.log("🎬 Videos initialized but empty, refetching...");
+        await videoStore.fetchVideos();
+      }
+    };
+
+    loadVideos();
+  }, []); // Empty dependency array - only run once when component mounts
 
   // Get unique categories and levels for filters
-  const categories = [...new Set(videoStore.videos.map((video) => video.category))]
-  const levels = [...new Set(videoStore.videos.map((video) => video.level))]
+  const categories = [
+    ...new Set(videoStore.videos.map((video) => video.category)),
+  ];
+  const levels = [...new Set(videoStore.videos.map((video) => video.level))];
 
   // Filter videos based on search query and filters
   const filteredVideos = videoStore.videos.filter((video) => {
     const matchesSearch =
       video.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      video.description.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesCategory = !categoryFilter || video.category === categoryFilter
-    const matchesLevel = !levelFilter || video.level === levelFilter
+      video.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory =
+      !categoryFilter || video.category === categoryFilter;
+    const matchesLevel = !levelFilter || video.level === levelFilter;
 
-    return matchesSearch && matchesCategory && matchesLevel
-  })
+    return matchesSearch && matchesCategory && matchesLevel;
+  });
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold mb-2">Yoga Videos</h1>
-        <p className="text-muted-foreground">Browse our collection of premium yoga videos</p>
+        <p className="text-muted-foreground">
+          Browse our collection of premium yoga videos
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-[1fr_200px_200px]">
-        <Input placeholder="Search videos..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+        <Input
+          placeholder="Search videos..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
 
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger>
@@ -79,11 +119,15 @@ const VideosPage = observer(() => {
         </div>
       ) : (
         <div className="text-center py-12">
-          <p className="text-muted-foreground">No videos found matching your criteria</p>
+          <p className="text-muted-foreground">
+            {videoStore.videos.length === 0 && !videoStore.loading
+              ? "Loading videos..."
+              : "No videos found matching your criteria"}
+          </p>
         </div>
       )}
     </div>
-  )
-})
+  );
+});
 
-export default VideosPage
+export default VideosPage;

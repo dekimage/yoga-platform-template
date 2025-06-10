@@ -9,33 +9,77 @@ class AuthStore {
     makeAutoObservable(this);
   }
 
-  async initialize() {
-    try {
-      const token = localStorage.getItem("authToken");
-      // console.log("Token from localStorage:", token);
+  // Helper function to convert Firestore timestamps
+  convertFirestoreTimestamps(userData) {
+    const converted = { ...userData };
 
-      if (token && token !== "undefined" && token !== "null") {
-        const response = await fetch("/api/auth/me", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-        if (response.ok) {
-          this.user = await response.json();
+    // Convert subscriptionEndsAt
+    if (converted.subscriptionEndsAt) {
+      if (converted.subscriptionEndsAt.seconds) {
+        converted.subscriptionEndsAt = new Date(
+          converted.subscriptionEndsAt.seconds * 1000
+        );
+      } else if (typeof converted.subscriptionEndsAt === "string") {
+        converted.subscriptionEndsAt = new Date(converted.subscriptionEndsAt);
+      }
+    }
+
+    // Convert canceledAt
+    if (converted.canceledAt) {
+      if (converted.canceledAt.seconds) {
+        converted.canceledAt = new Date(converted.canceledAt.seconds * 1000);
+      } else if (typeof converted.canceledAt === "string") {
+        converted.canceledAt = new Date(converted.canceledAt);
+      }
+    }
+
+    return converted;
+  }
+
+  async initialize() {
+    runInAction(() => {
+      this.isInitialized = false;
+    });
+
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      runInAction(() => {
+        this.isAuthenticated = false;
+        this.isInitialized = true;
+        this.user = null;
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/auth/me", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        runInAction(() => {
           this.isAuthenticated = true;
-        } else {
-          console.error("Failed to authenticate:", response.statusText);
-          this.isAuthenticated = false;
-          localStorage.removeItem("authToken");
-        }
+          this.user = this.convertFirestoreTimestamps(userData);
+          this.isInitialized = true;
+        });
       } else {
-        console.log("No valid token found in localStorage");
+        localStorage.removeItem("authToken");
+        runInAction(() => {
+          this.isAuthenticated = false;
+          this.isInitialized = true;
+          this.user = null;
+        });
       }
     } catch (error) {
-      console.error("Auth initialization error:", error);
-    } finally {
-      this.isInitialized = true;
+      console.error("Auth initialization failed:", error);
+      runInAction(() => {
+        this.isAuthenticated = false;
+        this.isInitialized = true;
+        this.user = null;
+      });
     }
   }
 
@@ -52,14 +96,17 @@ class AuthStore {
     }
 
     const data = await response.json();
-    this.user = data.user;
-    this.isAuthenticated = true;
-    this.isInitialized = true;
+
+    runInAction(() => {
+      this.user = this.convertFirestoreTimestamps(data.user);
+      this.isAuthenticated = true;
+      this.isInitialized = true;
+    });
+
     localStorage.setItem("authToken", data.token);
   }
 
   async login(email, password) {
-    console.log("Login called with email:", email, "and password:", password);
     const response = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -67,57 +114,28 @@ class AuthStore {
     });
 
     if (!response.ok) {
-      throw new Error("Login failed");
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Login failed");
     }
 
     const data = await response.json();
-    console.log("Login response data:", data);
 
-    this.user = data.user;
-    this.isAuthenticated = true;
-    this.isInitialized = true;
-    console.log("User set in store:", this.user);
-    console.log("isAuthenticated set to:", this.isAuthenticated);
-    console.log("isInitialized set to:", this.isInitialized);
+    runInAction(() => {
+      this.user = this.convertFirestoreTimestamps(data.user);
+      this.isAuthenticated = true;
+      this.isInitialized = true;
+    });
 
-    if (data.token) {
-      localStorage.setItem("authToken", data.token);
-      console.log("Token stored:", data.token);
-
-      // Also set a cookie for middleware
-      document.cookie = `auth-token=${data.token}; path=/; max-age=${
-        60 * 60 * 24 * 7
-      }; SameSite=Lax`;
-    } else if (data.accessToken) {
-      localStorage.setItem("authToken", data.accessToken);
-      console.log("Access token stored:", data.accessToken);
-
-      // Also set a cookie for middleware
-      document.cookie = `auth-token=${data.accessToken}; path=/; max-age=${
-        60 * 60 * 24 * 7
-      }; SameSite=Lax`;
-    } else {
-      console.error("No token found in login response:", data);
-    }
+    localStorage.setItem("authToken", data.token);
   }
 
-  async logout() {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
-
-    this.user = null;
-    this.isAuthenticated = false;
-    this.isInitialized = false;
+  logout() {
     localStorage.removeItem("authToken");
-
-    // Also remove the cookie
-    document.cookie =
-      "auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-
-    window.location.href = "/login";
+    runInAction(() => {
+      this.user = null;
+      this.isAuthenticated = false;
+      this.isInitialized = true;
+    });
   }
 
   async resetPassword(email) {
@@ -206,16 +224,7 @@ class AuthStore {
         const userData = await response.json();
         runInAction(() => {
           this.isAuthenticated = true;
-          this.user = {
-            ...userData,
-            // Convert Firestore timestamps to Date objects for easier handling
-            subscriptionEndsAt: userData.subscriptionEndsAt
-              ? new Date(userData.subscriptionEndsAt.seconds * 1000)
-              : null,
-            canceledAt: userData.canceledAt
-              ? new Date(userData.canceledAt.seconds * 1000)
-              : null,
-          };
+          this.user = this.convertFirestoreTimestamps(userData);
           this.isInitialized = true;
         });
       } else {

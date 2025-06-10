@@ -18,13 +18,37 @@ import { Separator } from "@/components/ui/separator";
 import {
   CalendarDays,
   CreditCard,
-  Download,
   AlertTriangle,
   CheckCircle,
   XCircle,
   Clock,
   DollarSign,
 } from "lucide-react";
+
+// Helper function to safely convert Firestore timestamp to Date
+const convertToDate = (timestamp) => {
+  if (!timestamp) return null;
+
+  // If it's already a Date object
+  if (timestamp instanceof Date) return timestamp;
+
+  // If it's a Firestore timestamp with seconds property
+  if (timestamp.seconds) {
+    return new Date(timestamp.seconds * 1000);
+  }
+
+  // If it's a string, try to parse it
+  if (typeof timestamp === "string") {
+    return new Date(timestamp);
+  }
+
+  // If it's a number (Unix timestamp)
+  if (typeof timestamp === "number") {
+    return new Date(timestamp * 1000);
+  }
+
+  return null;
+};
 
 const BillingPage = observer(() => {
   const { authStore, subscriptionStore } = useStore();
@@ -153,31 +177,6 @@ const BillingPage = observer(() => {
     }
   };
 
-  const downloadInvoice = async (orderId) => {
-    try {
-      const response = await fetch(`/api/billing/invoice/${orderId}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-        },
-      });
-
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `invoice-${orderId}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }
-    } catch (error) {
-      console.error("Failed to download invoice:", error);
-      alert("Failed to download invoice. Please try again.");
-    }
-  };
-
   const getSubscriptionStatusInfo = () => {
     const user = authStore.user;
 
@@ -196,53 +195,63 @@ const BillingPage = observer(() => {
       let endDate = null;
       let daysLeft = 0;
 
-      // Handle different date formats
-      if (user.subscriptionEndsAt) {
-        // Convert Firestore timestamp to Date if needed
-        endDate = user.subscriptionEndsAt.toDate
-          ? user.subscriptionEndsAt.toDate()
-          : new Date(user.subscriptionEndsAt);
-        daysLeft = Math.ceil((endDate - new Date()) / (1000 * 60 * 60 * 24));
+      // FIXED: Use the safe date conversion function
+      endDate = convertToDate(user.subscriptionEndsAt);
+
+      if (endDate) {
+        const now = new Date();
+        const timeDiff = endDate.getTime() - now.getTime();
+        daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
       }
 
       return {
         status: "canceled",
         title: "Subscription Canceled",
-        description: endDate
-          ? `Access ends in ${daysLeft} days (${endDate.toLocaleDateString()})`
-          : "Subscription has been canceled",
+        description:
+          daysLeft > 0
+            ? `Access ends in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`
+            : "Access has ended",
         icon: <AlertTriangle className="h-5 w-5 text-orange-500" />,
-        variant: "warning",
+        variant: "default",
       };
     }
 
     return {
       status: "active",
       title: "Active Subscription",
-      description: "Your subscription is active and renewing",
+      description: "Your subscription is active and up to date",
       icon: <CheckCircle className="h-5 w-5 text-green-500" />,
       variant: "default",
     };
   };
 
-  const statusInfo = getSubscriptionStatusInfo();
-  const user = authStore.user;
-
-  // Get the actual price from the most recent order or subscription details
   const getActualPrice = () => {
-    if (subscriptionDetails?.price) {
-      return (subscriptionDetails.price / 100).toFixed(2); // Convert cents to dollars
+    // Try to get price from subscription details first
+    if (subscriptionDetails?.price?.amount) {
+      return (subscriptionDetails.price.amount / 100).toFixed(2);
     }
 
+    // Fallback to order data
     if (orders.length > 0) {
       const latestOrder = orders[0];
-      return (latestOrder.amount / 100).toFixed(2); // Convert cents to dollars
+      return (latestOrder.amount / 100).toFixed(2);
     }
 
-    return "15.00"; // Fallback to your actual price
+    // Default fallback
+    return "15.00";
   };
 
+  const statusInfo = getSubscriptionStatusInfo();
+  const user = authStore.user;
   const actualPrice = getActualPrice();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -317,7 +326,10 @@ const BillingPage = observer(() => {
                   </p>
                 </div>
                 <p className="text-lg">
-                  {user.subscriptionEndsAt.toLocaleDateString()}
+                  {/* FIXED: Use safe date conversion */}
+                  {convertToDate(
+                    user.subscriptionEndsAt
+                  )?.toLocaleDateString() || "Unknown"}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {user.subscriptionStatus === "canceled"
@@ -350,7 +362,8 @@ const BillingPage = observer(() => {
             Payment History
           </CardTitle>
           <CardDescription>
-            Your subscription payments and invoices
+            Your subscription payments - download invoices from the customer
+            portal
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -391,14 +404,6 @@ const BillingPage = observer(() => {
                           {order.status}
                         </Badge>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => downloadInvoice(order.polarOrderId)}
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Invoice
-                      </Button>
                     </div>
                   </div>
                   {index < orders.length - 1 && <Separator />}
