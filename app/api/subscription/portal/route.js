@@ -4,8 +4,6 @@ import { firestore } from "@/lib/firebase";
 
 export async function GET(request) {
   try {
-    console.log("🔍 Portal access requested...");
-
     const token = getTokenFromRequest(request);
     if (!token) {
       return NextResponse.json(
@@ -15,7 +13,6 @@ export async function GET(request) {
     }
 
     const decodedToken = await verifyToken(token);
-    console.log("✅ Token verified for user:", decodedToken.uid);
 
     // Get user document
     const userDoc = await firestore
@@ -28,11 +25,6 @@ export async function GET(request) {
     }
 
     const userData = userDoc.data();
-    console.log("📄 User data:", {
-      email: userData.email,
-      polarCustomerId: userData.polarCustomerId,
-      subscriptionId: userData.subscriptionId,
-    });
 
     if (!userData.polarCustomerId) {
       return NextResponse.json(
@@ -44,8 +36,6 @@ export async function GET(request) {
     // Build the direct portal URL using the format from your working email link
     const portalUrl = `https://sandbox.polar.sh/yoga-platform-sandbox/portal/overview?id=${userData.polarCustomerId}`;
 
-    console.log("🔗 Portal URL:", portalUrl);
-
     // Return the portal URL as JSON
     return NextResponse.json({
       success: true,
@@ -53,7 +43,7 @@ export async function GET(request) {
       message: "Redirecting to customer portal",
     });
   } catch (error) {
-    console.error("❌ Error accessing portal:", error);
+    console.error("Error accessing portal:", error);
     return NextResponse.json(
       { error: error.message || "Failed to access portal" },
       { status: 500 }

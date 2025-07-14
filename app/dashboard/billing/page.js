@@ -137,34 +137,38 @@ const BillingPage = observer(() => {
     try {
       setLoading(true);
 
-      // Make an authenticated request to get the portal URL
+      const token = localStorage.getItem("authToken");
+
+      if (!token) {
+        alert("Authentication error. Please log in again.");
+        return;
+      }
+
       const response = await fetch("/api/subscription/portal", {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
       if (response.ok) {
-        // If it's a redirect response, get the redirect URL
-        const redirectUrl = response.url;
-        if (redirectUrl && redirectUrl !== window.location.href) {
-          window.location.href = redirectUrl;
+        const data = await response.json();
+
+        if (data.portal_url) {
+          window.location.href = data.portal_url;
+        } else if (data.url) {
+          window.location.href = data.url;
         } else {
-          // If no redirect, try to get JSON response with URL
-          const data = await response.json();
-          if (data.url) {
-            window.location.href = data.url;
-          }
+          alert("No portal URL received from server");
         }
       } else {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to open billing portal");
+        alert(`Error: ${errorData.error}`);
       }
     } catch (error) {
       console.error("Failed to open billing portal:", error);
       alert(
-        "Failed to open billing portal. Please try again or contact support."
+        `Failed to open billing portal: ${error.message}. Please try again or contact support.`
       );
     } finally {
       setLoading(false);
