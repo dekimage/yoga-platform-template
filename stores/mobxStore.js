@@ -400,25 +400,185 @@ class SubscriptionStore {
   }
 }
 
+class PlaylistStore {
+  playlists = [];
+  loading = false;
+  isInitialized = false;
+
+  constructor() {
+    makeAutoObservable(this);
+  }
+
+  async fetchPlaylists() {
+    runInAction(() => {
+      this.loading = true;
+    });
+
+    try {
+      const response = await fetch("/api/playlists");
+      const data = await response.json();
+
+      runInAction(() => {
+        this.playlists = data;
+        this.loading = false;
+        this.isInitialized = true;
+      });
+    } catch (error) {
+      console.error("Error fetching playlists:", error);
+      runInAction(() => {
+        this.loading = false;
+        this.isInitialized = true;
+      });
+    }
+  }
+
+  async ensurePlaylistsLoaded() {
+    if (!this.isInitialized && !this.loading) {
+      await this.fetchPlaylists();
+    }
+  }
+
+  getPlaylistById(id) {
+    return this.playlists.find((playlist) => playlist.id === id);
+  }
+
+  getPlaylistBySlug(slug) {
+    return this.playlists.find((playlist) => playlist.slug === slug);
+  }
+
+  // Get videos for a specific playlist using the video store
+  getPlaylistVideos(playlistId, videoStore) {
+    const playlist = this.getPlaylistById(playlistId);
+    if (!playlist || !playlist.videoIds) return [];
+
+    return playlist.videoIds
+      .map((videoId) => videoStore.videos.find((video) => video.id === videoId))
+      .filter(Boolean); // Remove any undefined videos
+  }
+
+  // Get next/previous video in playlist
+  getPlaylistNavigation(playlistId, currentVideoId, videoStore) {
+    const playlist = this.getPlaylistById(playlistId);
+    if (!playlist || !playlist.videoIds) return { previous: null, next: null };
+
+    const currentIndex = playlist.videoIds.indexOf(currentVideoId);
+    if (currentIndex === -1) return { previous: null, next: null };
+
+    const previousVideoId =
+      currentIndex > 0 ? playlist.videoIds[currentIndex - 1] : null;
+    const nextVideoId =
+      currentIndex < playlist.videoIds.length - 1
+        ? playlist.videoIds[currentIndex + 1]
+        : null;
+
+    return {
+      previous: previousVideoId
+        ? videoStore.videos.find((v) => v.id === previousVideoId)
+        : null,
+      next: nextVideoId
+        ? videoStore.videos.find((v) => v.id === nextVideoId)
+        : null,
+    };
+  }
+}
+
+class AuthorStore {
+  authors = [];
+  loading = false;
+  isInitialized = false;
+
+  constructor() {
+    makeAutoObservable(this);
+  }
+
+  async fetchAuthors() {
+    runInAction(() => {
+      this.loading = true;
+    });
+
+    try {
+      const response = await fetch("/api/authors");
+      const data = await response.json();
+
+      runInAction(() => {
+        this.authors = data;
+        this.loading = false;
+        this.isInitialized = true;
+      });
+    } catch (error) {
+      console.error("Error fetching authors:", error);
+      runInAction(() => {
+        this.loading = false;
+        this.isInitialized = true;
+      });
+    }
+  }
+
+  async ensureAuthorsLoaded() {
+    if (!this.isInitialized && !this.loading) {
+      await this.fetchAuthors();
+    }
+  }
+
+  getAuthorById(id) {
+    return this.authors.find((author) => author.id === id);
+  }
+
+  getAuthorBySlug(slug) {
+    return this.authors.find((author) => author.slug === slug);
+  }
+
+  // Get videos by author using the video store
+  getAuthorVideos(authorId, videoStore) {
+    return videoStore.videos.filter((video) => video.authorId === authorId);
+  }
+}
+
 class AnalyticsStore {
   constructor() {
     makeAutoObservable(this);
   }
 
   async trackVideoView(videoId) {
-    await fetch("/api/user/analytics", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "view", videoId }),
-    });
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      console.warn("No auth token found, skipping analytics tracking");
+      return;
+    }
+
+    try {
+      await fetch("/api/user/analytics", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action: "view", videoId }),
+      });
+    } catch (error) {
+      console.error("Error tracking video view:", error);
+    }
   }
 
   async trackVideoComplete(videoId) {
-    await fetch("/api/user/analytics", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "complete", videoId }),
-    });
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      console.warn("No auth token found, skipping analytics tracking");
+      return;
+    }
+
+    try {
+      await fetch("/api/user/analytics", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action: "complete", videoId }),
+      });
+    } catch (error) {
+      console.error("Error tracking video completion:", error);
+    }
   }
 }
 
@@ -426,6 +586,8 @@ class AnalyticsStore {
 const authStore = new AuthStore();
 const videoStore = new VideoStore();
 const subscriptionStore = new SubscriptionStore();
+const playlistStore = new PlaylistStore();
+const authorStore = new AuthorStore();
 const analyticsStore = new AnalyticsStore();
 const adminStore = new AdminStore();
 
@@ -433,6 +595,8 @@ export const mobxStore = {
   authStore,
   videoStore,
   subscriptionStore,
+  playlistStore,
+  authorStore,
   analyticsStore,
   adminStore,
 };

@@ -6,7 +6,7 @@ import { useStore } from "@/stores/StoreProvider";
 import { Badge } from "@/components/ui/badge";
 import { Lock } from "lucide-react";
 
-export const VideoCard = observer(({ video }) => {
+export const VideoCard = observer(({ video, playlistId }) => {
   const router = useRouter();
   const { authStore } = useStore();
 
@@ -16,8 +16,21 @@ export const VideoCard = observer(({ video }) => {
     router.push(`/dashboard/videos/tag/${encodeURIComponent(tag)}`);
   };
 
+  const handleAuthorClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (video.author?.slug) {
+      router.push(
+        `/dashboard/videos/author/${encodeURIComponent(video.author.slug)}`
+      );
+    }
+  };
+
   const handleCardClick = () => {
-    router.push(`/dashboard/video/${video.slug}`);
+    const url = playlistId
+      ? `/dashboard/video/${video.slug}?playlist=${playlistId}`
+      : `/dashboard/video/${video.slug}`;
+    router.push(url);
   };
 
   // FIXED: Handle missing isPublic field - default to false (private) for security
@@ -76,6 +89,29 @@ export const VideoCard = observer(({ video }) => {
               {video.title}
             </h3>
           </div>
+
+          {/* Author Info */}
+          {video.author && (
+            <div
+              className="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors"
+              onClick={handleAuthorClick}
+            >
+              <div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0">
+                <img
+                  src={
+                    video.author.avatar?.startsWith("/")
+                      ? video.author.avatar
+                      : `https:${video.author.avatar}`
+                  }
+                  alt={video.author.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <span className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                by {video.author.name}
+              </span>
+            </div>
+          )}
 
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs">

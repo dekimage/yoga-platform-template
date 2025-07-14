@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata = {
   title: "Yoga Platform",
   description: "Premium yoga videos for your practice",
-  generator: "v0.dev",
+  generator: "Dejan Gavrilovic",
 };
 
 export default function RootLayout({ children }) {

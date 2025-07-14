@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { observer } from "mobx-react-lite";
 import { useStore } from "@/stores/StoreProvider";
 import { Button } from "@/components/ui/button";
@@ -10,21 +10,32 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { VideoCard } from "@/components/video/VideoCard";
 import FavoriteButton from "@/components/video/FavoriteButton";
+import { PlaylistNavigation } from "@/components/playlist/PlaylistNavigation";
 
 const VideoPage = observer(() => {
   const params = useParams();
   const router = useRouter();
-  const { videoStore, analyticsStore } = useStore();
+  const searchParams = useSearchParams();
+  const { videoStore, playlistStore, analyticsStore } = useStore();
   const [video, setVideo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [signedUrl, setSignedUrl] = useState("");
   const [error, setError] = useState("");
+  const [playlistNavigation, setPlaylistNavigation] = useState(null);
+
+  // Get playlist ID from URL params
+  const playlistId = searchParams.get("playlist");
 
   useEffect(() => {
     const loadVideo = async () => {
       try {
         // Ensure videos are loaded first
         await videoStore.ensureVideosLoaded();
+
+        // If we have a playlist ID, ensure playlists are loaded too
+        if (playlistId) {
+          await playlistStore.ensurePlaylistsLoaded();
+        }
 
         // Find video by slug
         const foundVideo = videoStore.videos.find(
@@ -39,6 +50,17 @@ const VideoPage = observer(() => {
         console.log("🎬 Found video:", foundVideo);
         console.log("🎬 Video bunnyVideoId:", foundVideo.bunnyVideoId);
         setVideo(foundVideo);
+
+        // If we came from a playlist, get navigation info
+        if (playlistId) {
+          const navigation = playlistStore.getPlaylistNavigation(
+            playlistId,
+            foundVideo.id,
+            videoStore
+          );
+          console.log("🎵 Playlist navigation:", navigation);
+          setPlaylistNavigation(navigation);
+        }
 
         // Get signed URL for the video
         console.log(
@@ -60,7 +82,7 @@ const VideoPage = observer(() => {
     };
 
     loadVideo();
-  }, [params.slug, videoStore, analyticsStore]);
+  }, [params.slug, playlistId, videoStore, playlistStore, analyticsStore]);
 
   const handleVideoComplete = () => {
     if (video) {
@@ -119,7 +141,46 @@ const VideoPage = observer(() => {
       />
 
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{video.title}</h1>
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold mb-2">{video.title}</h1>
+
+          {/* Author Info */}
+          {video.author && (
+            <div
+              className="flex items-center gap-3 cursor-pointer hover:text-primary transition-colors"
+              onClick={() =>
+                router.push(
+                  `/dashboard/videos/author/${encodeURIComponent(
+                    video.author.slug
+                  )}`
+                )
+              }
+            >
+              <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+                <img
+                  src={
+                    video.author.avatar?.startsWith("/")
+                      ? video.author.avatar
+                      : `https:${video.author.avatar}`
+                  }
+                  alt={video.author.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div>
+                <p className="text-sm font-medium hover:text-primary transition-colors">
+                  {video.author.name}
+                </p>
+                {video.author.bio && (
+                  <p className="text-xs text-muted-foreground line-clamp-1">
+                    {video.author.bio}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
         <FavoriteButton videoId={video.id} className="h-10 w-10" />
       </div>
 
@@ -151,16 +212,27 @@ const VideoPage = observer(() => {
         </div>
       </div>
 
-      {/* Related Videos Section - SMART: Using MobX lookup */}
-      {relatedVideos.length > 0 && (
+      {/* Playlist Navigation or Related Videos */}
+      {playlistNavigation ? (
         <div className="pt-6 border-t">
-          <h3 className="text-xl font-semibold mb-4">Related Videos</h3>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {relatedVideos.map((relatedVideo) => (
-              <VideoCard key={relatedVideo.id} video={relatedVideo} />
-            ))}
-          </div>
+          <h3 className="text-xl font-semibold mb-4">Playlist Navigation</h3>
+          <PlaylistNavigation
+            navigation={playlistNavigation}
+            playlistId={playlistId}
+            playlistTitle={playlistStore.getPlaylistById(playlistId)?.title}
+          />
         </div>
+      ) : (
+        relatedVideos.length > 0 && (
+          <div className="pt-6 border-t">
+            <h3 className="text-xl font-semibold mb-4">Related Videos</h3>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {relatedVideos.map((relatedVideo) => (
+                <VideoCard key={relatedVideo.id} video={relatedVideo} />
+              ))}
+            </div>
+          </div>
+        )
       )}
     </div>
   );

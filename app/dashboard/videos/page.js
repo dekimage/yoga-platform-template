@@ -16,36 +16,59 @@ import TagsCarousel from "@/components/video/TagsCarousel";
 import CategoriesCarousel from "@/components/video/CategoriesCarousel";
 
 const VideosPage = observer(() => {
-  const { videoStore } = useStore();
+  const { videoStore, authorStore } = useStore();
   const searchParams = useSearchParams();
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [levelFilter, setLevelFilter] = useState("all");
+  const [authorFilter, setAuthorFilter] = useState("all");
 
   // Get search query from URL params (from global search)
   const searchQuery = searchParams.get("search") || "";
+  const authorParam = searchParams.get("author") || "";
 
-  // Add useEffect to ensure videos are loaded when navigating to this page
+  // Add useEffect to ensure videos and authors are loaded when navigating to this page
   useEffect(() => {
-    const loadVideos = async () => {
+    const loadData = async () => {
+      const promises = [];
+
       if (
         videoStore.videos.length === 0 &&
         !videoStore.loading &&
         !videoStore.isInitialized
       ) {
         console.log("🎬 Videos not loaded, fetching from Contentful...");
-        await videoStore.fetchVideos();
+        promises.push(videoStore.fetchVideos());
       } else if (
         videoStore.videos.length === 0 &&
         videoStore.isInitialized &&
         !videoStore.loading
       ) {
         console.log("🎬 Videos initialized but empty, refetching...");
-        await videoStore.fetchVideos();
+        promises.push(videoStore.fetchVideos());
       }
+
+      // Load authors
+      if (
+        authorStore.authors.length === 0 &&
+        !authorStore.loading &&
+        !authorStore.isInitialized
+      ) {
+        console.log("👤 Authors not loaded, fetching from Contentful...");
+        promises.push(authorStore.fetchAuthors());
+      }
+
+      await Promise.all(promises);
     };
 
-    loadVideos();
+    loadData();
   }, []);
+
+  // Set author filter from URL params
+  useEffect(() => {
+    if (authorParam) {
+      setAuthorFilter(authorParam);
+    }
+  }, [authorParam]);
 
   // Get unique categories and levels for filters
   const categories = [
@@ -64,14 +87,18 @@ const VideosPage = observer(() => {
       video.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       video.tags.some((tag) =>
         tag.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      ) ||
+      video.author?.name.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesCategory =
       categoryFilter === "all" || video.category === categoryFilter;
 
     const matchesLevel = levelFilter === "all" || video.level === levelFilter;
 
-    return matchesSearch && matchesCategory && matchesLevel;
+    const matchesAuthor =
+      authorFilter === "all" || video.author?.slug === authorFilter;
+
+    return matchesSearch && matchesCategory && matchesLevel && matchesAuthor;
   });
 
   return (
@@ -81,6 +108,10 @@ const VideosPage = observer(() => {
         <p className="text-muted-foreground">
           Browse our collection of premium yoga videos
           {searchQuery && ` - searching for "${searchQuery}"`}
+          {authorFilter !== "all" &&
+            ` - by ${
+              authorStore.getAuthorBySlug(authorFilter)?.name || authorFilter
+            }`}
         </p>
       </div>
 
@@ -115,6 +146,20 @@ const VideosPage = observer(() => {
             {levels.map((level) => (
               <SelectItem key={level} value={level}>
                 {level}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={authorFilter} onValueChange={setAuthorFilter}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="All Authors" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Authors</SelectItem>
+            {authorStore.authors.map((author) => (
+              <SelectItem key={author.id} value={author.slug}>
+                {author.name}
               </SelectItem>
             ))}
           </SelectContent>
