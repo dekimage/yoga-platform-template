@@ -48,23 +48,25 @@ const LoginPage = observer(() => {
   };
 
   return (
-    <div className="min-h-screen gradient-background">
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         <div className="flex min-h-screen items-center justify-center">
           <div className="w-full max-w-md space-y-8">
             {/* Logo and Brand */}
             <div className="text-center">
-              <div className="mx-auto h-20 w-20 rounded-full gradient-primary flex items-center justify-center mb-4">
-                <div className="text-white text-2xl font-bold">Y</div>
+              <div className="mx-auto h-20 w-20 rounded-full bg-foreground flex items-center justify-center mb-4">
+                <div className="text-background text-2xl font-bold">Y</div>
               </div>
-              <h1 className="text-3xl font-bold text-gray-900">Welcome Back</h1>
-              <p className="mt-2 text-gray-600">
+              <h1 className="text-3xl font-bold text-foreground">
+                Welcome Back
+              </h1>
+              <p className="mt-2 text-muted-foreground">
                 Sign in to continue your yoga journey
               </p>
             </div>
 
             {/* Login Card */}
-            <Card className="card-theme">
+            <Card>
               <CardHeader className="space-y-1 pb-6">
                 <CardTitle className="text-2xl font-semibold text-center">
                   Sign In
@@ -85,7 +87,7 @@ const LoginPage = observer(() => {
                   <div className="space-y-2">
                     <Label htmlFor="email">Email Address</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="email"
                         type="email"
@@ -104,7 +106,7 @@ const LoginPage = observer(() => {
                   <div className="space-y-2">
                     <Label htmlFor="password">Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="password"
                         type={showPassword ? "text" : "password"}
@@ -120,7 +122,7 @@ const LoginPage = observer(() => {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-3 h-4 w-4 text-gray-400 hover:text-gray-600"
+                        className="absolute right-3 top-3 h-4 w-4 text-muted-foreground hover:text-foreground"
                         disabled={isLoading}
                       >
                         {showPassword ? <EyeOff /> : <Eye />}
@@ -131,17 +133,13 @@ const LoginPage = observer(() => {
                   <div className="flex justify-end">
                     <Link
                       href="/forgot-password"
-                      className="text-sm text-purple-600 hover:text-purple-500 hover:underline"
+                      className="text-sm text-foreground hover:underline"
                     >
                       Forgot your password?
                     </Link>
                   </div>
 
-                  <Button
-                    type="submit"
-                    className="btn-primary w-full"
-                    disabled={isLoading}
-                  >
+                  <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -161,26 +159,28 @@ const LoginPage = observer(() => {
                 <Separator className="mb-4" />
 
                 <div className="text-center text-sm">
-                  <span className="text-gray-600">Don't have an account? </span>
+                  <span className="text-muted-foreground">
+                    Don't have an account?{" "}
+                  </span>
                   <Link
                     href="/signup"
-                    className="font-medium text-purple-600 hover:text-purple-500 hover:underline"
+                    className="font-medium text-foreground hover:underline"
                   >
                     Sign up here
                   </Link>
                 </div>
 
-                <div className="flex justify-center space-x-4 text-xs text-gray-500 mt-4">
+                <div className="flex justify-center space-x-4 text-xs text-muted-foreground mt-4">
                   <Link
                     href="/privacy"
-                    className="hover:text-gray-700 hover:underline"
+                    className="hover:text-foreground hover:underline"
                   >
                     Privacy Policy
                   </Link>
                   <span>•</span>
                   <Link
                     href="/terms"
-                    className="hover:text-gray-700 hover:underline"
+                    className="hover:text-foreground hover:underline"
                   >
                     Terms of Service
                   </Link>
@@ -189,7 +189,7 @@ const LoginPage = observer(() => {
             </Card>
 
             <div className="text-center">
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 Secure login powered by Firebase Authentication
               </p>
             </div>

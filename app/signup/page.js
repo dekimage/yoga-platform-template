@@ -110,25 +110,25 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         <div className="flex min-h-screen items-center justify-center">
           <div className="w-full max-w-md space-y-8">
             {/* Logo and Brand */}
             <div className="text-center">
-              <div className="mx-auto h-20 w-20 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center mb-4">
-                <div className="text-white text-2xl font-bold">Y</div>
+              <div className="mx-auto h-20 w-20 rounded-full bg-foreground flex items-center justify-center mb-4">
+                <div className="text-background text-2xl font-bold">Y</div>
               </div>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-3xl font-bold text-foreground">
                 Join Yoga Platform
               </h1>
-              <p className="mt-2 text-gray-600">
+              <p className="mt-2 text-muted-foreground">
                 Start your yoga journey today
               </p>
             </div>
 
             {/* Sign Up Card */}
-            <Card className="shadow-xl border-0">
+            <Card>
               <CardHeader className="space-y-1 pb-6">
                 <CardTitle className="text-2xl font-semibold text-center">
                   Create Account
@@ -150,7 +150,7 @@ export default function SignUpPage() {
                   <div className="space-y-2">
                     <Label htmlFor="fullName">Full Name</Label>
                     <div className="relative">
-                      <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="fullName"
                         type="text"
@@ -170,7 +170,7 @@ export default function SignUpPage() {
                   <div className="space-y-2">
                     <Label htmlFor="email">Email Address</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="email"
                         type="email"
@@ -190,7 +190,7 @@ export default function SignUpPage() {
                   <div className="space-y-2">
                     <Label htmlFor="password">Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="password"
                         type={showPassword ? "text" : "password"}
@@ -206,7 +206,7 @@ export default function SignUpPage() {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-3 h-4 w-4 text-gray-400 hover:text-gray-600"
+                        className="absolute right-3 top-3 h-4 w-4 text-muted-foreground hover:text-foreground"
                         disabled={isLoading}
                       >
                         {showPassword ? <EyeOff /> : <Eye />}
@@ -218,7 +218,7 @@ export default function SignUpPage() {
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword">Confirm Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="confirmPassword"
                         type={showConfirmPassword ? "text" : "password"}
@@ -236,7 +236,7 @@ export default function SignUpPage() {
                         onClick={() =>
                           setShowConfirmPassword(!showConfirmPassword)
                         }
-                        className="absolute right-3 top-3 h-4 w-4 text-gray-400 hover:text-gray-600"
+                        className="absolute right-3 top-3 h-4 w-4 text-muted-foreground hover:text-foreground"
                         disabled={isLoading}
                       >
                         {showConfirmPassword ? <EyeOff /> : <Eye />}
@@ -259,14 +259,14 @@ export default function SignUpPage() {
                         I agree to the{" "}
                         <Link
                           href="/terms"
-                          className="text-purple-600 hover:underline"
+                          className="text-foreground hover:underline"
                         >
                           Terms of Service
                         </Link>{" "}
                         and{" "}
                         <Link
                           href="/privacy"
-                          className="text-purple-600 hover:underline"
+                          className="text-foreground hover:underline"
                         >
                           Privacy Policy
                         </Link>
@@ -289,11 +289,7 @@ export default function SignUpPage() {
                   </div>
 
                   {/* Submit Button */}
-                  <Button
-                    type="submit"
-                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                    disabled={isLoading}
-                  >
+                  <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -314,12 +310,12 @@ export default function SignUpPage() {
 
                 {/* Sign In Link */}
                 <div className="text-center text-sm">
-                  <span className="text-gray-600">
+                  <span className="text-muted-foreground">
                     Already have an account?{" "}
                   </span>
                   <Link
                     href="/login"
-                    className="font-medium text-purple-600 hover:text-purple-500 hover:underline"
+                    className="font-medium text-foreground hover:underline"
                   >
                     Sign in here
                   </Link>
