@@ -16,7 +16,7 @@ const VideoPage = observer(() => {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { videoStore, playlistStore, analyticsStore } = useStore();
+  const { videoStore, playlistStore, analyticsStore, authStore } = useStore();
   const [video, setVideo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [signedUrl, setSignedUrl] = useState("");
@@ -49,6 +49,16 @@ const VideoPage = observer(() => {
 
         console.log("🎬 Found video:", foundVideo);
         console.log("🎬 Video bunnyVideoId:", foundVideo.bunnyVideoId);
+
+        // Check if user has access to this video
+        const isPublic = foundVideo.isPublic === true;
+        const hasAccess = isPublic || authStore.user?.activeMember;
+
+        if (!hasAccess) {
+          router.push("/dashboard/premium");
+          return;
+        }
+
         setVideo(foundVideo);
 
         // If we came from a playlist, get navigation info
@@ -67,7 +77,10 @@ const VideoPage = observer(() => {
           "🎬 Getting signed URL for bunnyVideoId:",
           foundVideo.bunnyVideoId
         );
-        const url = await videoStore.getSignedVideoUrl(foundVideo.bunnyVideoId);
+        const url = await videoStore.getSignedVideoUrl(
+          foundVideo.bunnyVideoId,
+          foundVideo.isPublic
+        );
         console.log("🎬 Received signed URL:", url);
         setSignedUrl(url);
 
@@ -82,7 +95,14 @@ const VideoPage = observer(() => {
     };
 
     loadVideo();
-  }, [params.slug, playlistId, videoStore, playlistStore, analyticsStore]);
+  }, [
+    params.slug,
+    playlistId,
+    videoStore,
+    playlistStore,
+    analyticsStore,
+    authStore,
+  ]);
 
   const handleVideoComplete = () => {
     if (video) {

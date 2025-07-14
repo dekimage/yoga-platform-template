@@ -72,7 +72,7 @@ export const Header = observer(() => {
               <UserNav />
             </div>
           ) : (
-            <div className="space-x-4">
+            <div className="flex items-center space-x-4">
               <Button variant="ghost" asChild>
                 <Link href="/login">Login</Link>
               </Button>

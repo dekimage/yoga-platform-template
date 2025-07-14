@@ -68,14 +68,13 @@ export const Header = observer(() => {
 
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container px-4 py-4">
+      <div className="w-full px-4 py-4">
         {/* Desktop Header */}
         <div className="hidden md:flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold block sm:hidden">
-            YogaPlatform
-          </Link>
+          {/* Left spacer to balance the layout */}
+          <div className="flex-1"></div>
 
-          {/* Global Search - Center */}
+          {/* Center - Global Search */}
           {authStore.user && (
             <div className="flex-1 max-w-md mx-8">
               <GlobalSearch />
@@ -83,7 +82,7 @@ export const Header = observer(() => {
           )}
 
           {/* Right side navigation */}
-          <nav className="flex items-center space-x-4">
+          <div className="flex-1 flex items-center justify-end space-x-4">
             {/* Navigation Links */}
             {authStore.user && (
               <>
@@ -122,7 +121,7 @@ export const Header = observer(() => {
                 </Button>
               </div>
             )}
-          </nav>
+          </div>
         </div>
 
         {/* Mobile Header */}
